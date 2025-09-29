@@ -4,6 +4,44 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)](releases/)
 
+## 📑 目录
+
+- [📖 简介](#-简介)
+  - [🌟 核心特性](#-核心特性)
+  - [🏗️ 架构设计](#️-架构设计)
+- [🚀 跑通Examples](#-跑通examples)
+  - [环境要求](#环境要求)
+  - [1. 克隆项目](#1-克隆项目)
+  - [2. 配置本地参数](#2-配置本地参数)
+  - [3. 在DevEco Studio中运行](#3-在deveco-studio中运行)
+- [📦 集成组件](#-集成组件)
+  - [方式一：HAR包集成（推荐）](#方式一har包集成推荐)
+  - [方式二：源码集成](#方式二源码集成)
+- [🎯 使用方法](#-使用方法)
+  - [基础歌词显示](#基础歌词显示)
+  - [卡拉OK评分显示](#卡拉ok评分显示)
+  - [KaraokeView 组件集成示例](#karaokeview-组件集成示例)
+  - [完整集成示例](#完整集成示例)
+- [📚 API文档](#-api文档)
+  - [KaraokeView 主组件](#karaokeview-主组件)
+  - [IKaraokeEvent 事件接口](#ikaraokeevent-事件接口)
+  - [LyricsView 歌词显示组件](#lyricsview-歌词显示组件)
+  - [ScoringView 评分显示组件](#scoringview-评分显示组件)
+  - [数据模型](#数据模型)
+- [🎵 RTC MCC集成](#-rtc-mcc集成)
+  - [1. RTC MCC初始化](#1-rtc-mcc初始化)
+  - [2. 音乐供应商配置](#2-音乐供应商配置)
+  - [3. 打分系统开启](#3-打分系统开启)
+  - [4. 音乐播放控制](#4-音乐播放控制)
+  - [5. 歌词同步](#5-歌词同步)
+  - [6. 权限配置](#6-权限配置)
+  - [7. 完整集成示例](#7-完整集成示例)
+- [🏗️ 构建指南](#️-构建指南)
+  - [统一构建脚本](#统一构建脚本)
+  - [构建配置](#构建配置)
+  - [发布流程](#发布流程)
+- [📋 变更记录](#-变更记录)
+
 ## 📖 简介
 
 LyricsView HarmonyOS 是一个功能强大的 HarmonyOS 歌词显示组件库，专为卡拉OK应用设计。支持实时歌词显示、音高评分、粒子特效等丰富功能，支持与
@@ -85,6 +123,14 @@ CHANNEL_NAME=Karaoke-Test-HarmonyOS
 # 构建Release版本HAR包
 ./build.sh
    ```
+
+   构建完成后，HAR包将生成在以下位置：
+
+- **主要输出位置**: `releases/v1.0.0/Agora-LyricsView-HarmonyOS-1.0.0.har`
+- **构建目录**: `lyrics_view/build/default/outputs/default/lyrics_view-default-unsigned.har`
+- **SHA256校验文件**: `releases/v1.0.0/Agora-LyricsView-HarmonyOS-1.0.0.har.sha256`
+
+   > 💡 **提示**: 推荐使用 `releases/` 目录下的版本化HAR包，该包已经过完整的构建和验证流程。
 
 #### 2. 添加依赖
 
@@ -1751,9 +1797,7 @@ Release版本未启用代码混淆，可以开启保护导出的API：
 - 📚 丰富的组件配置属性
 - 📚 完整的回调事件系统
 
-
 ---
-
 
 <div align="center">
   <p>Made with ❤️ by 声网</p>
