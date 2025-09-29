@@ -1,0 +1,12 @@
+{
+  "name": "agora-lyrics-view-harmonyos",
+  "version": "1.0.0",
+  "description": "Agora Lyrics View for HarmonyOS",
+  "scripts": {
+    "prebuild": "node scripts/generate-config.js",
+    "build": "hvigorw assembleHap",
+    "clean": "hvigorw clean"
+  },
+  "devDependencies": {},
+  "private": true
+}

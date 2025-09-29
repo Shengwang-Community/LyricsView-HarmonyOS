@@ -1,0 +1,34 @@
+{
+  "project": {
+    "name": "Agora LyricsView HarmonyOS",
+    "description": "HarmonyOS LyricsView component with karaoke functionality",
+    "version": "1.0.0",
+    "author": "Agora",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/Shengwang-Community/LyricsView-HarmonyOS"
+  },
+  "sdk": {
+    "mode": false,
+    "description": "SDK mode configuration: true for HAR package, false for source code"
+  },
+  "build": {
+    "harName": "Agora-LyricsView-HarmonyOS",
+    "outputDir": "lyrics_view/build/default/outputs/default",
+    "signing": {
+      "enabled": false,
+      "description": "Enable signing for HAR packages"
+    }
+  },
+  "modules": {
+    "lyrics_view": {
+      "name": "lyrics_view",
+      "type": "har",
+      "description": "Main lyrics view module"
+    },
+    "entry": {
+      "name": "entry",
+      "type": "hap",
+      "description": "Example application module"
+    }
+  }
+}

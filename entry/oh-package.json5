@@ -1,0 +1,26 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "Please describe the basic information.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "@shengwang/lyrics-view": "file:../lyrics_view",
+    "@shengwang/rtc-full": "file:./libs/AgoraRtcSdk.har"
+  },
+  "devDependencies": {},
+  "peerDependencies": {},
+  "har": {
+    "dependencies": [
+      {
+        "name": "@shengwang/lyrics-view",
+        "path": "../lyrics_view"
+      },
+      {
+        "name": "@shengwang/rtc-full",
+        "path": "./libs/AgoraRtcSdk.har"
+      }
+    ]
+  }
+}
