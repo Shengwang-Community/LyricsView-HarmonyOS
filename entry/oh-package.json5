@@ -6,7 +6,7 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "@shengwang/lyrics-view": "file:../lyrics_view",
+    "@shengwang/lyrics-view": "file:./libs/AgoraLyricsView.har",
     "@shengwang/rtc-full": "file:./libs/AgoraRtcSdk.har"
   },
   "devDependencies": {},
@@ -15,7 +15,7 @@
     "dependencies": [
       {
         "name": "@shengwang/lyrics-view",
-        "path": "../lyrics_view"
+        "path": "./libs/AgoraLyricsView.har"
       },
       {
         "name": "@shengwang/rtc-full",

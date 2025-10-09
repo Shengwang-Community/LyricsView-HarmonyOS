@@ -117,7 +117,22 @@ CHANNEL_NAME=Karaoke-Test-HarmonyOS
 
 ### 方式一：HAR包集成（推荐）
 
-#### 1. 构建HAR包
+#### 1. 修改项目配置
+
+首先，需要修改 `project-config.json` 文件，将SDK模式设置为true：
+
+```json5
+{
+  "sdk": {
+    "mode": true,
+    "description": "SDK mode configuration: true for HAR package, false for source code"
+  }
+}
+```
+
+> 💡 **提示**: 设置 `sdk.mode: true` 将项目配置为HAR包模式，这样可以使用预构建的HAR包而不是源码依赖。
+
+#### 2. 构建HAR包
 
    ```bash
 # 构建Release版本HAR包
@@ -132,7 +147,7 @@ CHANNEL_NAME=Karaoke-Test-HarmonyOS
 
    > 💡 **提示**: 推荐使用 `releases/` 目录下的版本化HAR包，该包已经过完整的构建和验证流程。
 
-#### 2. 添加依赖
+#### 3. 添加依赖
 
 在您的项目 `oh-package.json5` 中添加：
 
@@ -144,7 +159,7 @@ CHANNEL_NAME=Karaoke-Test-HarmonyOS
    }
    ```
 
-#### 3. 导入组件
+#### 4. 导入组件
 
    ```typescript
 import {
