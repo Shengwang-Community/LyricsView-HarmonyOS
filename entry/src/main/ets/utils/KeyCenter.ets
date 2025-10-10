@@ -2,6 +2,35 @@ import { BuildConfig } from './BuildConfig';
 import { ExampleConstants } from './ExampleConstants';
 import { ExampleLogUtils } from './ExmapleLogUtils';
 import { TokenHttpClient, TokenHttpResponse } from './TokenHttpClient';
+import {
+  ChannelProfileType,
+  ClientRoleType,
+  TokenGenerateCallback,
+  TokenGenerateParams,
+  TokenGenerateResponse,
+  TokenGenerator,
+  TokenType
+} from './TokenGenerator';
+
+/**
+ * Token生成回调适配器类
+ * 用于适配TokenCallback到TokenGenerateCallback
+ */
+class TokenCallbackAdapter implements TokenGenerateCallback {
+  private callback: TokenCallback;
+
+  constructor(callback: TokenCallback) {
+    this.callback = callback;
+  }
+
+  onTokenGenerated(response: TokenGenerateResponse): void {
+    this.callback.onTokenGenerated({
+      success: response.success,
+      token: response.token,
+      error: response.error
+    });
+  }
+}
 
 /**
  * Token generation response interface
@@ -104,45 +133,6 @@ export class KeyCenter {
    */
   public static setUserUid(uid: number): void {
     KeyCenter.USER_RTC_UID = uid;
-  }
-
-  /**
-   * Generate RTC Token
-   * Priority: predefined RTC_TOKEN > server API generation > APP_ID as fallback
-   */
-  public static async getRtcToken(channelId: string, uid: number, callback: TokenCallback): Promise<void> {
-    ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: channelId=${channelId}, uid=${uid}`)
-
-    // If RTC_TOKEN constant is defined, return it directly
-    if (KeyCenter.RTC_TOKEN && KeyCenter.RTC_TOKEN.trim() !== '') {
-      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: using predefined RTC_TOKEN`)
-      callback.onTokenGenerated({
-        success: true,
-        token: KeyCenter.RTC_TOKEN
-      });
-      return;
-    }
-
-    // If no certificate, return APP_ID directly
-    if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
-      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: using APP_ID as token`)
-      callback.onTokenGenerated({
-        success: true,
-        token: KeyCenter.APP_ID
-      });
-      return;
-    }
-
-    try {
-      // Call server API to generate token
-      await KeyCenter.generateTokenFromServer(channelId, uid, 'rtc', callback);
-    } catch (error) {
-      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcToken: failed to generate RTC token: ${JSON.stringify(error)}`)
-      callback.onTokenGenerated({
-        success: false,
-        error: `Failed to generate RTC token: ${JSON.stringify(error)}`
-      });
-    }
   }
 
   /**
@@ -380,16 +370,198 @@ export class KeyCenter {
   }
 
   /**
-   * Validate if configuration is valid
-   */
-  public static isConfigValid(): boolean {
-    return !!(KeyCenter.APP_ID && KeyCenter.APP_ID.trim() !== '');
-  }
-
-  /**
    * Get configuration information (for debugging)
    */
   public static getConfigInfo(): Record<string, Object> {
     return BuildConfig.getConfigInfo();
+  }
+
+  /**
+   * 使用TokenGenerator生成RTC Token (V6版本)
+   * 适配Python TokenGenerator的token_v6模式
+   * @param channelId 频道名称
+   * @param uid 用户ID
+   * @param callback 回调接口
+   * @param role 客户端角色(默认主播)
+   */
+  public static async getRtcTokenV6(
+    channelId: string,
+    uid: number,
+    callback: TokenCallback, role: ClientRoleType = ClientRoleType.BROADCASTER
+  ): Promise<void> {
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcTokenV6: channelId=${channelId}, uid=${uid}, role=${role}`)
+
+    // 检查是否配置了APP_CERTIFICATE
+    if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcTokenV6: APP_CERTIFICATE not configured`)
+      callback.onTokenGenerated({
+        success: false,
+        error: 'APP_CERTIFICATE not configured'
+      });
+      return;
+    }
+
+    // 如果RTC_TOKEN已配置，直接返回
+    if (KeyCenter.RTC_TOKEN && KeyCenter.RTC_TOKEN.trim() !== '') {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcTokenV6: using predefined RTC_TOKEN`)
+      callback.onTokenGenerated({
+        success: true,
+        token: KeyCenter.RTC_TOKEN
+      });
+      return;
+    }
+
+    try {
+      const tokenGenerator = new TokenGenerator(TokenType.TOKEN_V6);
+      const params: TokenGenerateParams = {
+        channelName: channelId,
+        uid: uid,
+        channelType: ChannelProfileType.BROADCASTING,
+        expireTimestamp: 24 * 60 * 60,
+        role: role,
+        appId: KeyCenter.APP_ID,
+        appCertificate: KeyCenter.APP_CERTIFICATE
+      };
+
+      const callbackAdapter = new TokenCallbackAdapter(callback);
+      await tokenGenerator.generateToken(params, callbackAdapter);
+
+    } catch (error) {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getRtcTokenV6: failed to generate token: ${JSON.stringify(error)}`)
+      callback.onTokenGenerated({
+        success: false,
+        error: `Failed to generate token: ${JSON.stringify(error)}`
+      });
+    }
+  }
+
+  /**
+   * 使用TokenGenerator生成Dynamic Key 5
+   * 适配Python TokenGenerator的dy5模式
+   * @param channelId 频道名称
+   * @param uid 用户ID
+   * @param callback 回调接口
+   */
+  public static async getDy5Token(
+    channelId: string,
+    uid: number,
+    callback: TokenCallback
+  ): Promise<void> {
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getDy5Token: channelId=${channelId}, uid=${uid}`)
+
+    if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getDy5Token: APP_CERTIFICATE not configured`)
+      callback.onTokenGenerated({
+        success: false,
+        error: 'APP_CERTIFICATE not configured'
+      });
+      return;
+    }
+
+    try {
+      const tokenGenerator = new TokenGenerator(TokenType.DY5);
+      const params: TokenGenerateParams = {
+        channelName: channelId,
+        uid: uid,
+        appId: KeyCenter.APP_ID,
+        appCertificate: KeyCenter.APP_CERTIFICATE
+      };
+
+      const callbackAdapter = new TokenCallbackAdapter(callback);
+      await tokenGenerator.generateToken(params, callbackAdapter);
+
+    } catch (error) {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getDy5Token: failed to generate token: ${JSON.stringify(error)}`)
+      callback.onTokenGenerated({
+        success: false,
+        error: `Failed to generate token: ${JSON.stringify(error)}`
+      });
+    }
+  }
+
+  /**
+   * 生成观众Token
+   * 适配Python TokenGenerator的generate_audience_token方法
+   * @param channelId 频道名称
+   * @param uid 用户ID
+   * @param channelType 频道类型
+   * @param callback 回调接口
+   */
+  public static async getAudienceToken(
+    channelId: string,
+    uid: number,
+    channelType: ChannelProfileType = ChannelProfileType.BROADCASTING,
+    callback: TokenCallback
+  ): Promise<void> {
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getAudienceToken: channelId=${channelId}, uid=${uid}`)
+
+    if (!KeyCenter.APP_CERTIFICATE || KeyCenter.APP_CERTIFICATE.trim() === '') {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getAudienceToken: APP_CERTIFICATE not configured`)
+      callback.onTokenGenerated({
+        success: false,
+        error: 'APP_CERTIFICATE not configured'
+      });
+      return;
+    }
+
+    try {
+      const tokenGenerator = new TokenGenerator(TokenType.TOKEN_V6);
+      const callbackAdapter = new TokenCallbackAdapter(callback);
+      await tokenGenerator.generateAudienceToken(
+        channelId,
+        uid,
+        channelType,
+        100000000,
+        KeyCenter.APP_ID,
+        KeyCenter.APP_CERTIFICATE,
+        callbackAdapter
+      );
+
+    } catch (error) {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getAudienceToken: failed to generate token: ${JSON.stringify(error)}`)
+      callback.onTokenGenerated({
+        success: false,
+        error: `Failed to generate token: ${JSON.stringify(error)}`
+      });
+    }
+  }
+
+  /**
+   * 使用指定的AppId和Certificate生成Token
+   * 适配Python TokenGenerator的generate_token_with_other_appid方法
+   * @param channelId 频道名称
+   * @param uid 用户ID
+   * @param appId App ID
+   * @param appCertificate App Certificate
+   * @param callback 回调接口
+   */
+  public static async getTokenWithAppId(
+    channelId: string,
+    uid: number,
+    appId: string,
+    appCertificate: string,
+    callback: TokenCallback
+  ): Promise<void> {
+    ExampleLogUtils.logDebug(KeyCenter.TAG, `getTokenWithAppId: channelId=${channelId}, uid=${uid}, appId=${appId}`)
+
+    try {
+      const tokenGenerator = new TokenGenerator(TokenType.TOKEN_V6);
+      const callbackAdapter = new TokenCallbackAdapter(callback);
+      await tokenGenerator.generateTokenWithOtherAppId(
+        channelId,
+        uid,
+        appId,
+        appCertificate,
+        100000000,
+        callbackAdapter
+      );
+
+    } catch (error) {
+      ExampleLogUtils.logDebug(KeyCenter.TAG, `getTokenWithAppId: failed to generate token: ${JSON.stringify(error)}`)
+      callback.onTokenGenerated({
+        success: false,
+        error: `Failed to generate token: ${JSON.stringify(error)}`
+      });
+    }
   }
 }

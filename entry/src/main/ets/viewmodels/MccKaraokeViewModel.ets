@@ -180,7 +180,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
       const rtcTokenCallback = new RtcTokenCallbackImpl(this, () => {
         rtcTokenReceived = true;
       }, checkComplete);
-      KeyCenter.getRtcToken(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
+      KeyCenter.getRtcTokenV6(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
 
       // Get RTM Token
       const rtmTokenCallback = new RtmTokenCallbackImpl(this, () => {
@@ -315,7 +315,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     // Switch service type
     this.currentVendorId =
       this.currentVendorId === MusicContentCenterVendorId.DEFAULT ? MusicContentCenterVendorId.VENDOR_2 :
-        MusicContentCenterVendorId.DEFAULT;
+      MusicContentCenterVendorId.DEFAULT;
     this.musicManager.updateMusicVendor(this.currentVendorId);
 
     // Update song information
@@ -572,7 +572,7 @@ class RtcTokenCallbackImpl implements TokenCallback {
     if (response.success && response.token) {
       this.viewModel.rtcToken = response.token;
       ExampleLogUtils.logDebug('LyricsView-RtcTokenCallbackImpl',
-        `RTC Token received: ${response.token.substring(0, 20)}...`);
+        `RTC Token received: ${response.token}`);
     } else {
       ExampleLogUtils.logError('LyricsView-RtcTokenCallbackImpl', `RTC Token failed: ${response.error}`);
       this.viewModel.rtcToken = this.viewModel.appId; // Fallback to APP_ID
