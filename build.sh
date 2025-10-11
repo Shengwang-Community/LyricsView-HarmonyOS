@@ -65,15 +65,30 @@ show_help() {
     echo "用法: ./build.sh [command]"
     echo ""
     echo "命令:"
-    echo "  (无参数)               编译 Release 版本 HAR 包"
+    echo "  (无参数)               编译 Release 版本 (HAR + HAP)"
     echo "  clean                  清理所有构建文件"
     echo "  help                   显示此帮助信息"
     echo ""
+    echo "构建输出:"
+    echo "  - HAR 包: lyrics_view/build/default/outputs/default/"
+    echo "  - HAP 包: entry/build/default/outputs/default/"
+    echo ""
+    echo "发布目录结构:"
+    echo "  releases/v{版本号}/"
+    echo "    ├── sdk/                  # SDK 包"
+    echo "    │   └── Agora-LyricsView-{版本号}.har"
+    echo "    └── example/              # 示例应用"
+    echo "        └── LyricsView-Example-v{版本号}-{时间戳}.hap"
+    echo ""
+    echo "HAP 文件命名格式:"
+    echo "  LyricsView-Example-v{版本号}-{时间戳}.hap"
+    echo "  示例: LyricsView-Example-v1.0.0-20251011-123456.hap"
+    echo ""
     echo "示例:"
-    echo "  ./build.sh              # 编译 Release 版本"
+    echo "  ./build.sh              # 编译 HAR 和 HAP"
     echo "  ./build.sh clean        # 清理构建文件"
     echo ""
-    echo "🚀 推荐使用: ./build.sh  # 一条命令搞定所有操作"
+    echo "🚀 推荐使用: ./build.sh  # 一条命令编译 HAR + HAP"
 }
 
 # 生成项目配置
@@ -109,8 +124,10 @@ generate_config() {
         fi
         
         # 复制HAR包到entry/libs目录
-        local HAR_SOURCE="$PROJECT_ROOT/releases/v1.0.0/Agora-LyricsView-HarmonyOS-1.0.0.har"
-        local HAR_TARGET="$ENTRY_LIBS_DIR/AgoraLyricsView.har"
+        local VERSION=$(get_version)
+        local HAR_SOURCE="$PROJECT_ROOT/releases/v${VERSION}/Agora-LyricsView-${VERSION}.har"
+        local HAR_FILENAME="Agora-LyricsView-${VERSION}.har"
+        local HAR_TARGET="$ENTRY_LIBS_DIR/$HAR_FILENAME"
         
         if [ -f "$HAR_SOURCE" ]; then
             cp "$HAR_SOURCE" "$HAR_TARGET"
@@ -120,8 +137,8 @@ generate_config() {
             local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
             if [ -f "$ENTRY_PACKAGE" ]; then
                 # 使用sed替换导入路径
-                sed -i '' 's|"@shengwang/lyrics-view": "file:../lyrics_view"|"@shengwang/lyrics-view": "file:./libs/AgoraLyricsView.har"|g' "$ENTRY_PACKAGE"
-                sed -i '' 's|"path": "../lyrics_view"|"path": "./libs/AgoraLyricsView.har"|g' "$ENTRY_PACKAGE"
+                sed -i '' "s|\"@shengwang/lyrics-view\": \"file:../lyrics_view\"|\"@shengwang/lyrics-view\": \"file:./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
+                sed -i '' "s|\"path\": \"../lyrics_view\"|\"path\": \"./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
                 
                 # 更新entry源码中的导入语句
                 updateEntryImports "har"
@@ -129,7 +146,7 @@ generate_config() {
                 print_info "已更新entry导入配置为HAR包模式"
             fi
         else
-            print_warn "HAR包不存在: $HAR_SOURCE，将使用源码导入"
+            print_warning "HAR包不存在: $HAR_SOURCE，将使用源码导入"
         fi
     else
         print_info "SDK模式为源码模式，使用源码导入"
@@ -138,19 +155,19 @@ generate_config() {
         local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
         if [ -f "$ENTRY_PACKAGE" ]; then
             # 检查是否需要切换到源码导入
-            if grep -q "AgoraLyricsView.har" "$ENTRY_PACKAGE"; then
+            if grep -q "file:./libs/Agora-LyricsView" "$ENTRY_PACKAGE"; then
                 # 切换到源码导入，但保持@shengwang/lyrics-view名称
-                sed -i '' 's|"@shengwang/lyrics-view": "file:./libs/AgoraLyricsView.har"|"@shengwang/lyrics-view": "file:../lyrics_view"|g' "$ENTRY_PACKAGE"
-                sed -i '' 's|"path": "./libs/AgoraLyricsView.har"|"path": "../lyrics_view"|g' "$ENTRY_PACKAGE"
+                sed -i '' 's|"@shengwang/lyrics-view": "file:./libs/Agora-LyricsView-[^"]*"|"@shengwang/lyrics-view": "file:../lyrics_view"|g' "$ENTRY_PACKAGE"
+                sed -i '' 's|"path": "./libs/Agora-LyricsView-[^"]*"|"path": "../lyrics_view"|g' "$ENTRY_PACKAGE"
                 
                 print_info "已切换entry导入配置为源码模式（保持@shengwang/lyrics-view名称）"
             fi
             
             # 删除HAR包文件（源码模式不需要）
-            local HAR_FILE="$PROJECT_ROOT/entry/libs/AgoraLyricsView.har"
-            if [ -f "$HAR_FILE" ]; then
-                rm "$HAR_FILE"
-                print_info "已删除HAR包文件: $HAR_FILE"
+            local HAR_FILES="$PROJECT_ROOT/entry/libs/Agora-LyricsView-*.har"
+            rm -f $HAR_FILES 2>/dev/null
+            if [ $? -eq 0 ]; then
+                print_info "已删除HAR包文件"
             fi
             
             # 确保entry源码使用统一的导入名称
@@ -244,6 +261,131 @@ build_har() {
     fi
 }
 
+# 编译 HAP 包
+build_hap() {
+    local BUILD_TYPE=${1:-release}
+    
+    print_step "开始编译 entry HAP 包..."
+    print_info "构建类型: $BUILD_TYPE"
+    
+    # 获取版本信息
+    local VERSION=$(get_version)
+    print_info "当前版本: $VERSION"
+    
+    # 确保 lyrics_view HAR 包已复制到 entry/libs
+    print_step "准备依赖文件..."
+    local HAR_NAME=$(node "$CONFIG_MANAGER" get build.harName)
+    local LYRICS_HAR_SOURCE="lyrics_view/build/default/outputs/default/${HAR_NAME}-${VERSION}.har"
+    local LYRICS_HAR_FILENAME="${HAR_NAME}-${VERSION}.har"
+    local LYRICS_HAR_TARGET="entry/libs/$LYRICS_HAR_FILENAME"
+    
+    if [ -f "$LYRICS_HAR_SOURCE" ]; then
+        mkdir -p entry/libs
+        cp "$LYRICS_HAR_SOURCE" "$LYRICS_HAR_TARGET"
+        print_info "已复制 $LYRICS_HAR_FILENAME 到 entry/libs"
+    else
+        print_warning "未找到 $LYRICS_HAR_FILENAME，将使用现有的 HAR 包"
+    fi
+    
+    # 安装依赖
+    print_step "安装依赖..."
+    cd entry
+    
+    # 清理 oh_modules 缓存
+    if [ -d "oh_modules" ]; then
+        rm -rf oh_modules
+    fi
+    
+    # 使用 DevEco Studio 的 ohpm 安装依赖
+    local OHPM_CMD="/Applications/DevEco-Studio.app/Contents/tools/ohpm/bin/ohpm"
+    if [ -f "$OHPM_CMD" ]; then
+        $OHPM_CMD install
+        print_success "依赖安装完成"
+    else
+        print_warning "未找到 ohpm，尝试使用系统 ohpm"
+        ohpm install
+    fi
+    
+    cd ..
+    
+    # 使用 DevEco Studio 的 hvigor 工具
+    local HVIGOR_CMD="/Applications/DevEco-Studio.app/Contents/tools/node/bin/node /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js"
+    
+    print_info "编译 Release 版本 HAP 包..."
+    $HVIGOR_CMD --mode module -p module=entry@default -p product=default -p buildMode=release assembleHap --analyze=normal --parallel --incremental --daemon
+    
+    # 检查编译结果
+    local SIGNED_HAP_PATH="entry/build/default/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    
+    if [ -f "$SIGNED_HAP_PATH" ] || [ -f "$UNSIGNED_HAP_PATH" ]; then
+        print_success "HAP 包编译成功!"
+        
+        if [ -f "$SIGNED_HAP_PATH" ]; then
+            print_info "类型: 已签名版本 (signed)"
+            ls -lh "$SIGNED_HAP_PATH"
+        else
+            print_warning "类型: 未签名版本 (unsigned) - 建议配置签名"
+            ls -lh "$UNSIGNED_HAP_PATH"
+        fi
+        
+    else
+        print_error "HAP 包编译失败!"
+        exit 1
+    fi
+}
+
+# 重命名并复制 HAP 文件到 release 目录
+rename_hap_file() {
+    local VERSION=$1
+    local RELEASE_DIR=$2
+    local OUTPUT_DIR="entry/build/default/outputs/default"
+    local TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+    local NEW_FILENAME="LyricsView-Example-v${VERSION}-${TIMESTAMP}.hap"
+    
+    local SIGNED_HAP_PATH="$OUTPUT_DIR/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH="$OUTPUT_DIR/entry-default-unsigned.hap"
+    
+    # 创建 example 目录
+    local EXAMPLE_DIR="$RELEASE_DIR/example"
+    mkdir -p "$EXAMPLE_DIR"
+    
+    local NEW_HAP_PATH="$EXAMPLE_DIR/$NEW_FILENAME"
+    
+    if [ -f "$SIGNED_HAP_PATH" ]; then
+        cp "$SIGNED_HAP_PATH" "$NEW_HAP_PATH"
+        print_success "HAP 文件已重命名并复制到 release 目录"
+        print_info "文件名: $NEW_FILENAME"
+        print_info "类型: 已签名版本 (signed)"
+        print_info "位置: $NEW_HAP_PATH"
+        
+        # 显示文件信息
+        echo ""
+        print_info "HAP 文件信息:"
+        ls -lh "$NEW_HAP_PATH"
+        
+        return 0
+        
+    elif [ -f "$UNSIGNED_HAP_PATH" ]; then
+        cp "$UNSIGNED_HAP_PATH" "$NEW_HAP_PATH"
+        print_success "HAP 文件已重命名并复制到 release 目录"
+        print_info "文件名: $NEW_FILENAME"
+        print_warning "类型: 未签名版本 (unsigned) - 建议配置签名"
+        print_info "位置: $NEW_HAP_PATH"
+        
+        # 显示文件信息
+        echo ""
+        print_info "HAP 文件信息:"
+        ls -lh "$NEW_HAP_PATH"
+        
+        return 0
+        
+    else
+        print_warning "未找到 HAP 文件"
+        return 1
+    fi
+}
+
 
 # 构建 Release 版本
 build_release() {
@@ -270,13 +412,22 @@ build_release() {
     print_step "🔨 编译 Release 版本 HAR 包..."
     build_har release
     
-    # 4. 准备发布文件
+    # 4. 编译 Release 版本 HAP 包
+    print_step "📱 编译 Release 版本 HAP 包..."
+    build_hap release
+    
+    # 5. 准备发布文件
     print_step "📦 准备发布文件..."
     local RELEASE_DIR="releases/v$VERSION"
     mkdir -p "$RELEASE_DIR"
     
-    # 检查编译结果
-    local CUSTOM_HAR="lyrics_view/build/default/outputs/default/Agora-LyricsView-HarmonyOS-$VERSION.har"
+    # 创建 sdk 和 example 子目录
+    local SDK_DIR="$RELEASE_DIR/sdk"
+    mkdir -p "$SDK_DIR"
+    
+    # 检查 HAR 编译结果
+    local HAR_NAME=$(node "$CONFIG_MANAGER" get build.harName)
+    local CUSTOM_HAR="lyrics_view/build/default/outputs/default/${HAR_NAME}-${VERSION}.har"
     local ORIGINAL_HAR="lyrics_view/build/default/outputs/default/lyrics_view.har"
     
     local HAR_PATH
@@ -289,20 +440,27 @@ build_release() {
         exit 1
     fi
     
-    # 复制 HAR 包到发布目录
-    local RELEASE_HAR="$RELEASE_DIR/Agora-LyricsView-HarmonyOS-$VERSION.har"
+    # 复制 HAR 包到 sdk 目录
+    local RELEASE_HAR_FILENAME="${HAR_NAME}-${VERSION}.har"
+    local RELEASE_HAR="$SDK_DIR/$RELEASE_HAR_FILENAME"
     cp "$HAR_PATH" "$RELEASE_HAR"
+    print_info "已复制 HAR 包到: $SDK_DIR/$RELEASE_HAR_FILENAME"
+    
+    # 复制并重命名 HAP 包到 example 目录
+    rename_hap_file "$VERSION" "$RELEASE_DIR"
     
     print_success "🎉 构建完成!"
     print_info "📁 发布目录: $(pwd)/$RELEASE_DIR"
-    print_info "📋 发布文件:"
-    ls -lh "$RELEASE_DIR/"
+    echo ""
+    print_info "📋 目录结构:"
+    tree -L 2 "$RELEASE_DIR" 2>/dev/null || ls -lhR "$RELEASE_DIR/"
     
     echo ""
     print_info "🚀 您现在可以："
-    print_info "   1. 使用 HAR 包: Agora-LyricsView-HarmonyOS-$VERSION.har"
-    print_info "   2. 集成到其他项目中使用"
-    print_info "   3. 查看配置: entry/src/main/ets/utils/BuildConfig.ets"
+    print_info "   1. SDK (HAR): $RELEASE_DIR/sdk/${HAR_NAME}-${VERSION}.har"
+    print_info "   2. 示例 (HAP): $RELEASE_DIR/example/*.hap"
+    print_info "   3. 集成到其他项目中使用"
+    print_info "   4. 查看配置: entry/src/main/ets/utils/BuildConfig.ets"
 }
 
 # 发布 HAR 包（保留原函数名以兼容）
