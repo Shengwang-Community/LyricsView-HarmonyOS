@@ -67,15 +67,6 @@ export class MusicResourcePool {
       ""
     ));
 
-    list.push(new MusicResource(
-      3,
-      "6246262727302510",
-      "测试歌曲",
-      MusicContentCenterVendorId.DEFAULT,
-      4,
-      ""
-    ));
-
     return list;
   }
 
@@ -126,34 +117,6 @@ export class MusicResourcePool {
       4,
       "130598261",
       "火力全开",
-      MusicContentCenterVendorId.VENDOR_2,
-      4,
-      ""
-    ));
-
-    // Test songs
-    list.push(new MusicResource(
-      5,
-      "613544010",
-      "测试歌曲1",
-      MusicContentCenterVendorId.VENDOR_2,
-      4,
-      ""
-    ));
-
-    list.push(new MusicResource(
-      6,
-      "332492815",
-      "测试歌曲2",
-      MusicContentCenterVendorId.VENDOR_2,
-      4,
-      ""
-    ));
-
-    list.push(new MusicResource(
-      7,
-      "32144422",
-      "测试歌曲3",
       MusicContentCenterVendorId.VENDOR_2,
       4,
       ""

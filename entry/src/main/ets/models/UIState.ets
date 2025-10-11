@@ -34,6 +34,16 @@ export class UIState {
   }
 
   /**
+   * Set info message (informational, not error)
+   */
+  setInfo(message: string): void {
+    this.callBackInfo = message;
+    this.hasError = false;
+    this.errorMessage = '';
+    this.isLoading = false;
+  }
+
+  /**
    * Set error information
    */
   setError(error: string): void {

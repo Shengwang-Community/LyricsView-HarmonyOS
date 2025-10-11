@@ -40,6 +40,8 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   public rtcToken: string = "";
   public rtmToken: string = "";
   public userId: string = "";
+  @Trace public channelName: string = "";
+  @Trace public rtcUid: number = 0;
   public ysdAppId: string = KeyCenter.VENDOR_2_APP_ID;
   public ysdAppKey: string = KeyCenter.VENDOR_2_APP_KEY;
   public ysdUserId: string = "";
@@ -59,49 +61,63 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   async initialize(): Promise<void> {
     await super.initialize();
 
-    // 首先检查权限状态
-    await this.safeExecute(
-      () => this.checkPermissionsAndInitialize(),
-      () => {
-        ExampleLogUtils.logDebug(this.TAG, 'ViewModel initialization completed successfully');
-      },
-      (error) => {
-        this.uiState.setError(`Initialization failed: ${error.message}`);
-      }
-    );
+    // 检查权限并初始化
+    await this.checkAndRequestPermissions();
   }
 
   /**
-   * 检查权限并初始化MCC Karaoke系统
+   * 检查并请求权限
+   * 如果用户拒绝授权，不会抛出错误，而是等待用户手动重试
    */
-  private async checkPermissionsAndInitialize(): Promise<void> {
+  private async checkAndRequestPermissions(): Promise<void> {
     const context = ContextManager.getInstance().getContext();
     if (!context) {
-      throw new Error('Application context not available');
+      this.uiState.setError('应用上下文不可用');
+      return;
     }
 
-    ExampleLogUtils.logDebug(this.TAG, 'Checking permissions before initializing MCC Karaoke');
+    try {
+      ExampleLogUtils.logDebug(this.TAG, 'Checking permissions before initializing MCC Karaoke');
 
-    // 检查必需权限
-    const hasEssentialPermissions = await PermissionUtil.hasEssentialPermissions(context);
+      // 检查必需权限
+      const hasEssentialPermissions = await PermissionUtil.hasEssentialPermissions(context);
 
-    if (!hasEssentialPermissions) {
-      // 尝试申请权限
-      ExampleLogUtils.logDebug(this.TAG, 'Essential permissions not granted, requesting permissions');
-      const result = await PermissionUtil.requestEssentialPermissions(context);
-      PermissionUtil.logPermissionResult(result);
+      if (!hasEssentialPermissions) {
+        // 尝试申请权限
+        ExampleLogUtils.logDebug(this.TAG, 'Essential permissions not granted, requesting permissions');
+        this.uiState.setLoading(true, '正在请求权限...');
 
-      if (!result.success) {
-        throw new Error(`权限申请失败: ${result.message}`);
+        const result = await PermissionUtil.requestEssentialPermissions(context);
+        PermissionUtil.logPermissionResult(result);
+
+        if (!result.success) {
+          // 用户拒绝授权，不抛出错误，而是提示用户
+          ExampleLogUtils.logWarn(this.TAG, `权限未授予: ${result.message}`);
+          this.uiState.setInfo('需要麦克风和网络权限才能使用卡拉OK功能，请点击"重新授权"按钮');
+          return;
+        }
       }
+
+      // 权限检查通过，初始化MCC Karaoke
+      ExampleLogUtils.logDebug(this.TAG, 'Permissions verified, initializing MCC Karaoke');
+      await this.initializeMccKaraoke();
+
+      this.uiState.setSuccess('歌词组件初始化成功');
+      this.musicManager.joinChannel();
+
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `权限检查失败: ${error}`);
+      this.uiState.setError(`初始化失败: ${error.message || error}`);
     }
+  }
 
-    // 权限检查通过，初始化MCC Karaoke
-    ExampleLogUtils.logDebug(this.TAG, 'Permissions verified, initializing MCC Karaoke');
-    await this.initializeMccKaraoke();
-
-    this.uiState.setSuccess('歌词组件初始化成功');
-    this.musicManager.joinChannel();
+  /**
+   * 重新请求权限并初始化
+   * 供UI按钮调用
+   */
+  public async retryInitialization(): Promise<void> {
+    this.uiState.reset();
+    await this.checkAndRequestPermissions();
   }
 
   /**
@@ -150,11 +166,12 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   private async initializeWithTokens(context: common.UIAbilityContext): Promise<void> {
     ExampleLogUtils.logDebug(this.TAG, 'Starting token initialization');
 
-    // Get user ID
-    this.userId = KeyCenter.getUserUid().toString();
-    const channelName = KeyCenter.CHANNEL_NAME;
+    // Get user ID and channel name
+    this.rtcUid = KeyCenter.getUserUid();
+    this.userId = this.rtcUid.toString();
+    this.channelName = KeyCenter.getChannelName();
 
-    ExampleLogUtils.logDebug(this.TAG, `Using userId: ${this.userId}, channel: ${channelName}`);
+    ExampleLogUtils.logDebug(this.TAG, `Using userId: ${this.userId}, channel: ${this.channelName}`);
 
     return new Promise((resolve, reject) => {
       let rtcTokenReceived = false;
@@ -166,7 +183,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
         if ((rtcTokenReceived && rtmTokenReceived && ysdTokenReceived) || hasError) {
           if (!hasError) {
             ExampleLogUtils.logDebug(this.TAG, 'All tokens received, initializing MusicManager');
-            this.musicManager.init(context, this.appId, KeyCenter.CHANNEL_NAME, this.rtcToken,
+            this.musicManager.init(context, this.appId, KeyCenter.getChannelName(), this.rtcToken,
               this.rtmToken,
               this.userId,
               this.ysdAppId, this.ysdAppKey, this.ysdUserId, this.ysdToken, this)
@@ -180,13 +197,13 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
       const rtcTokenCallback = new RtcTokenCallbackImpl(this, () => {
         rtcTokenReceived = true;
       }, checkComplete);
-      KeyCenter.getRtcTokenV6(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
+      KeyCenter.getRtcToken(this.channelName, KeyCenter.getUserUid(), rtcTokenCallback);
 
       // Get RTM Token
       const rtmTokenCallback = new RtmTokenCallbackImpl(this, () => {
         rtmTokenReceived = true;
       }, checkComplete);
-      KeyCenter.getRtmToken(KeyCenter.getUserUid(), rtmTokenCallback);
+      KeyCenter.getRtmToken(KeyCenter.getUserUid().toString(), rtmTokenCallback);
 
       // Get YSD Token
       const ysdTokenCallback = new YSDTokenCallbackImpl(this, () => {
@@ -507,7 +524,6 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     return this.musicManager.getChannelId();
   }
 
-
   // ==================== Destroy Methods ====================
 
   /**
@@ -597,7 +613,7 @@ class RtmTokenCallbackImpl implements TokenCallback {
     if (response.success && response.token) {
       this.viewModel.rtmToken = response.token;
       ExampleLogUtils.logDebug('LyricsView-RtmTokenCallbackImpl',
-        `RTM Token received: ${response.token.substring(0, 20)}...`);
+        `RTM Token received: ${response.token}`);
     } else {
       ExampleLogUtils.logError('LyricsView-RtmTokenCallbackImpl', `RTM Token failed: ${response.error}`);
       this.viewModel.rtmToken = this.viewModel.appId; // Fallback to APP_ID

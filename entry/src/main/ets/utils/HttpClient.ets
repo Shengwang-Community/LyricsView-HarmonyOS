@@ -3,7 +3,7 @@ import http from '@ohos.net.http';
 /**
  * HTTP response interface
  */
-export interface TokenHttpResponse {
+export interface HttpResponse {
   success: boolean;
   data?: string;
   error?: string;
@@ -13,8 +13,8 @@ export interface TokenHttpResponse {
  * Token HTTP client
  * HTTP request utility specifically for token generation
  */
-export class TokenHttpClient {
-  private static readonly TAG: string = 'TokenHttpClient';
+export class HttpClient {
+  private static readonly TAG: string = 'HttpClient';
 
   /**
    * Send POST request to generate token
@@ -23,13 +23,13 @@ export class TokenHttpClient {
     url: string,
     headers: Record<string, string>,
     body: string
-  ): Promise<TokenHttpResponse> {
+  ): Promise<HttpResponse> {
     let httpRequest: http.HttpRequest | null = null;
 
     try {
-      console.log(`${TokenHttpClient.TAG} POST request to: ${url}`);
-      console.log(`${TokenHttpClient.TAG} Headers:`, JSON.stringify(headers));
-      console.log(`${TokenHttpClient.TAG} Body:`, body);
+      console.log(`${HttpClient.TAG} POST request to: ${url}`);
+      console.log(`${HttpClient.TAG} Headers:`, JSON.stringify(headers));
+      console.log(`${HttpClient.TAG} Body:`, body);
 
       httpRequest = http.createHttp();
 
@@ -42,17 +42,17 @@ export class TokenHttpClient {
         readTimeout: 15000     // 15 seconds read timeout
       });
 
-      console.log(`${TokenHttpClient.TAG} Response code: ${response.responseCode}`);
-      console.log(`${TokenHttpClient.TAG} Response data:`, response.result);
+      console.log(`${HttpClient.TAG} Response code: ${response.responseCode}`);
+      console.log(`${HttpClient.TAG} Response data:`, response.result);
 
       if (response.responseCode === 200) {
-        const result: TokenHttpResponse = {
+        const result: HttpResponse = {
           success: true,
           data: response.result as string
         };
         return result;
       } else {
-        const result: TokenHttpResponse = {
+        const result: HttpResponse = {
           success: false,
           error: `HTTP ${response.responseCode}: ${response.result}`
         };
@@ -60,8 +60,8 @@ export class TokenHttpClient {
       }
 
     } catch (error) {
-      console.error(`${TokenHttpClient.TAG} Request failed:`, JSON.stringify(error));
-      const result: TokenHttpResponse = {
+      console.error(`${HttpClient.TAG} Request failed:`, JSON.stringify(error));
+      const result: HttpResponse = {
         success: false,
         error: `Network error: ${JSON.stringify(error)}`
       };
@@ -79,11 +79,11 @@ export class TokenHttpClient {
   public static async get(
     url: string,
     headers?: Record<string, string>
-  ): Promise<TokenHttpResponse> {
+  ): Promise<HttpResponse> {
     let httpRequest: http.HttpRequest | null = null;
 
     try {
-      console.log(`${TokenHttpClient.TAG} GET request to: ${url}`);
+      console.log(`${HttpClient.TAG} GET request to: ${url}`);
 
       httpRequest = http.createHttp();
 
@@ -98,16 +98,16 @@ export class TokenHttpClient {
         readTimeout: 15000
       });
 
-      console.log(`${TokenHttpClient.TAG} Response code: ${response.responseCode}`);
+      console.log(`${HttpClient.TAG} Response code: ${response.responseCode}`);
 
       if (response.responseCode === 200) {
-        const result: TokenHttpResponse = {
+        const result: HttpResponse = {
           success: true,
           data: response.result as string
         };
         return result;
       } else {
-        const result: TokenHttpResponse = {
+        const result: HttpResponse = {
           success: false,
           error: `HTTP ${response.responseCode}: ${response.result}`
         };
@@ -115,8 +115,8 @@ export class TokenHttpClient {
       }
 
     } catch (error) {
-      console.error(`${TokenHttpClient.TAG} Request failed:`, JSON.stringify(error));
-      const result: TokenHttpResponse = {
+      console.error(`${HttpClient.TAG} Request failed:`, JSON.stringify(error));
+      const result: HttpResponse = {
         success: false,
         error: `Network error: ${JSON.stringify(error)}`
       };

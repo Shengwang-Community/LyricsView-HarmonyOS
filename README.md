@@ -95,16 +95,14 @@ cd LyricsView-HarmonyOS
 # Agora 配置
 APP_ID=your_agora_app_id
 APP_CERTIFICATE=your_agora_app_certificate
-# RTC/RTM Token
-RTC_TOKEN=your_rtc_token
-RTM_TOKEN=your_rtm_token
+
 # 音速达配置 (Vendor2)
 VENDOR_2_APP_ID=your_yinsuda_app_id
 VENDOR_2_APP_KEY=your_yinsuda_app_key
 VENDOR_2_TOKEN_HOST=https://your-token-server.com/getUserData?uid=
-# 频道配置
-CHANNEL_NAME=Karaoke-Test-HarmonyOS
 ```
+
+> **说明**: RTC Token、RTM Token 和频道名称会在运行时动态生成，无需在配置文件中预设。
 
 ### 3. 在DevEco Studio中运行
 
@@ -1087,17 +1085,17 @@ console.log(`添加Vendor2结果: ${addVendorRet}`);
 # 声网配置
 APP_ID=your_agora_app_id
 APP_CERTIFICATE=your_agora_app_certificate
-RTC_TOKEN=your_rtc_token
-RTM_TOKEN=your_rtm_token
 
 # 音速达配置 (Vendor2)
 VENDOR_2_APP_ID=your_yinsuda_app_id
 VENDOR_2_APP_KEY=your_yinsuda_app_key
 VENDOR_2_TOKEN_HOST=https://your-token-server.com/getUserData?uid=
-
-# 频道配置
-CHANNEL_NAME=Karaoke-Test-HarmonyOS
 ```
+
+> **说明**:
+>
+> - RTC Token 和 RTM Token 会通过 `KeyCenter` 类动态生成，基于 APP_ID 和 APP_CERTIFICATE
+> - 频道名称会在运行时动态生成，格式为 `Karaoke_{timestamp}_{random}`
 
 ### 3. 打分系统开启
 

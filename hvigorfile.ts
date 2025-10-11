@@ -33,8 +33,6 @@ function generateBuildConfig() {
     config = {
       APP_ID: 'your_app_id_here',
       APP_CERTIFICATE: '',
-      RTC_TOKEN: '',
-      RTM_TOKEN: '',
       VENDOR_2_APP_ID: 'your_vendor_app_id',
       VENDOR_2_APP_KEY: 'your_vendor_app_key',
       VENDOR_2_TOKEN_HOST: 'https://your-api-host.com/token'
@@ -51,17 +49,10 @@ export class BuildConfig {
   public static readonly APP_ID: string = '${config.APP_ID || ''}';
   public static readonly APP_CERTIFICATE: string = '${config.APP_CERTIFICATE || ''}';
 
-  // Token 配置
-  public static readonly RTC_TOKEN: string = '${config.RTC_TOKEN || ''}';
-  public static readonly RTM_TOKEN: string = '${config.RTM_TOKEN || ''}';
-
   // Vendor2 配置
   public static readonly VENDOR_2_APP_ID: string = '${config.VENDOR_2_APP_ID || ''}';
   public static readonly VENDOR_2_APP_KEY: string = '${config.VENDOR_2_APP_KEY || ''}';
   public static readonly VENDOR_2_TOKEN_HOST: string = '${config.VENDOR_2_TOKEN_HOST || ''}';
-
-  // 其他配置
-  public static readonly CHANNEL_NAME: string = '${config.CHANNEL_NAME || ''}';
 
   /**
    * 检查配置是否有效
@@ -77,9 +68,6 @@ export class BuildConfig {
     const configInfo: Record<string, Object> = {} as Record<string, Object>;
     configInfo['appId'] = BuildConfig.APP_ID ? BuildConfig.APP_ID.substring(0, 8) + '...' : 'empty';
     configInfo['hasCertificate'] = !!(BuildConfig.APP_CERTIFICATE && BuildConfig.APP_CERTIFICATE.trim() !== '');
-    configInfo['hasRtcToken'] = !!(BuildConfig.RTC_TOKEN && BuildConfig.RTC_TOKEN.trim() !== '');
-    configInfo['hasRtmToken'] = !!(BuildConfig.RTM_TOKEN && BuildConfig.RTM_TOKEN.trim() !== '');
-    configInfo['channelName'] = BuildConfig.CHANNEL_NAME;
     return configInfo;
   }
 }`;
@@ -98,8 +86,6 @@ export class BuildConfig {
   console.log('[GenerateConfig] Configuration loaded:');
   console.log('- APP_ID:', config.APP_ID ? config.APP_ID.substring(0, 8) + '...' : 'empty');
   console.log('- Has Certificate:', !!(config.APP_CERTIFICATE && config.APP_CERTIFICATE.trim() !== ''));
-  console.log('- Has RTC Token:', !!(config.RTC_TOKEN && config.RTC_TOKEN.trim() !== ''));
-  console.log('- Has RTM Token:', !!(config.RTM_TOKEN && config.RTM_TOKEN.trim() !== ''));
 }
 
 // 在导出前生成配置
