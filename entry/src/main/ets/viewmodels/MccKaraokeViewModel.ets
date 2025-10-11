@@ -152,7 +152,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
     // Get user ID
     this.userId = KeyCenter.getUserUid().toString();
-    const channelName = KeyCenter.CHANNEL_NAME;
+    const channelName = KeyCenter.getChannelName();
 
     ExampleLogUtils.logDebug(this.TAG, `Using userId: ${this.userId}, channel: ${channelName}`);
 
@@ -166,7 +166,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
         if ((rtcTokenReceived && rtmTokenReceived && ysdTokenReceived) || hasError) {
           if (!hasError) {
             ExampleLogUtils.logDebug(this.TAG, 'All tokens received, initializing MusicManager');
-            this.musicManager.init(context, this.appId, KeyCenter.CHANNEL_NAME, this.rtcToken,
+            this.musicManager.init(context, this.appId, KeyCenter.getChannelName(), this.rtcToken,
               this.rtmToken,
               this.userId,
               this.ysdAppId, this.ysdAppKey, this.ysdUserId, this.ysdToken, this)
@@ -180,13 +180,13 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
       const rtcTokenCallback = new RtcTokenCallbackImpl(this, () => {
         rtcTokenReceived = true;
       }, checkComplete);
-      KeyCenter.getRtcTokenV6(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
+      KeyCenter.getRtcToken(channelName, KeyCenter.getUserUid(), rtcTokenCallback);
 
       // Get RTM Token
       const rtmTokenCallback = new RtmTokenCallbackImpl(this, () => {
         rtmTokenReceived = true;
       }, checkComplete);
-      KeyCenter.getRtmToken(KeyCenter.getUserUid(), rtmTokenCallback);
+      KeyCenter.getRtmToken(KeyCenter.getUserUid().toString(), rtmTokenCallback);
 
       // Get YSD Token
       const ysdTokenCallback = new YSDTokenCallbackImpl(this, () => {
@@ -597,7 +597,7 @@ class RtmTokenCallbackImpl implements TokenCallback {
     if (response.success && response.token) {
       this.viewModel.rtmToken = response.token;
       ExampleLogUtils.logDebug('LyricsView-RtmTokenCallbackImpl',
-        `RTM Token received: ${response.token.substring(0, 20)}...`);
+        `RTM Token received: ${response.token}`);
     } else {
       ExampleLogUtils.logError('LyricsView-RtmTokenCallbackImpl', `RTM Token failed: ${response.error}`);
       this.viewModel.rtmToken = this.viewModel.appId; // Fallback to APP_ID
