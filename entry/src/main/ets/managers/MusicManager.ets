@@ -35,6 +35,9 @@ export class MusicManager implements IMccCallback {
   private playPosition: number = 0;
   private lyricsCurrentProgress: number = 0;
   private songOffsetBegin: number = 0;
+  // Time-based position tracking
+  private positionUpdateStartTime: number = 0; // System time when timer started
+  private positionUpdateStartPosition: number = 0; // Music position when timer started
   // Music configuration
   private lyricType: Constants.LyricSourceType = 0; // LYRIC_SOURCE_XML = 0
   private musicPlayMode: Constants.MusicPlayMode = Constants.MusicPlayMode.ORIGINAL;
@@ -133,7 +136,6 @@ export class MusicManager implements IMccCallback {
       return;
     }
 
-
     if (this.musicResources.length === 0) {
       console.error(`${MusicManager.TAG} no music resources available`);
       return;
@@ -222,6 +224,11 @@ export class MusicManager implements IMccCallback {
     }
 
     this.status = PlaybackStatus.PLAYING;
+
+    // Reinitialize timestamp when resuming playback to avoid position jumps
+    this.positionUpdateStartTime = Date.now();
+    this.positionUpdateStartPosition = (this.rtcMccManager?.getPlayPosition() || 0) + this.songOffsetBegin;
+
     this.rtcMccManager?.resume();
   }
 
@@ -245,8 +252,13 @@ export class MusicManager implements IMccCallback {
   seekMusic(position: number): void {
     ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager seekMusic:${position}`);
     this.lyricsCurrentProgress = position;
+
+    // Reinitialize timestamp when seeking
+    this.positionUpdateStartTime = Date.now();
+    this.positionUpdateStartPosition = position + this.songOffsetBegin;
+    this.playPosition = this.positionUpdateStartPosition;
+
     this.rtcMccManager?.seek(position);
-    this.updateMusicPosition(position);
   }
 
   /**
@@ -295,20 +307,24 @@ export class MusicManager implements IMccCallback {
   private startDisplayLrc(): void {
     ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager startDisplayLrc`);
 
-    this.playPosition = -1;
+    // Initialize timestamp and starting position
+    this.positionUpdateStartTime = Date.now();
+    this.positionUpdateStartPosition = (this.rtcMccManager?.getPlayPosition() || 0) + this.songOffsetBegin;
+    this.playPosition = this.positionUpdateStartPosition;
 
     this.positionUpdateTimer = setInterval(() => {
       if (this.status === PlaybackStatus.PLAYING) {
-        this.playPosition = this.rtcMccManager?.getPlayPosition() || 0;
-        this.playPosition += this.songOffsetBegin;
+        // Calculate current position based on timestamp to avoid setInterval jitter issues
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - this.positionUpdateStartTime;
+        this.playPosition = this.positionUpdateStartPosition + elapsedTime;
 
-        // if (this.playPosition === -1 || this.playPosition % 1000 < MusicManager.MUSIC_POSITION_UPDATE_INTERVAL) {
-        //   this.playPosition = this.rtcMccManager?.getPlayPosition() || 0;
-        //   this.playPosition += this.songOffsetBegin;
-        //   this.playPosition += MusicManager.MUSIC_POSITION_UPDATE_INTERVAL;
-        // } else {
-        //   this.playPosition += MusicManager.MUSIC_POSITION_UPDATE_INTERVAL;
-        // }
+        // Resync with actual position every second to avoid cumulative errors
+        if (elapsedTime >= 1000) {
+          this.positionUpdateStartTime = currentTime;
+          this.positionUpdateStartPosition = (this.rtcMccManager?.getPlayPosition() || 0) + this.songOffsetBegin;
+          this.playPosition = this.positionUpdateStartPosition;
+        }
 
         this.callback?.onMusicPositionChange?.(this.playPosition);
       }
@@ -324,16 +340,6 @@ export class MusicManager implements IMccCallback {
     if (this.positionUpdateTimer !== null) {
       clearInterval(this.positionUpdateTimer);
       this.positionUpdateTimer = null;
-    }
-  }
-
-  /**
-   * Update music position
-   */
-  private updateMusicPosition(position: number): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager updateMusicPosition:${position}`);
-    if (this.status === PlaybackStatus.PLAYING) {
-      this.playPosition = position;
     }
   }
 

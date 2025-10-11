@@ -1,8 +1,6 @@
 import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
 
-import {
-  LyricsView, ScoringView
-} from '@shengwang/lyrics-view';
+import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 
 /**
  * MCC集成的卡拉OK页面
@@ -359,6 +357,19 @@ struct MccIndex {
     .padding({ bottom: 8 })
   }
 
+  @Builder
+  VersionInfoBuilder() {
+    Row() {
+      Text(`version:${KaraokeView.getSdkVersion()}`)
+        .fontSize(10)
+        .fontColor('#999999')
+        .opacity(0.7)
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
+    .padding({ top: 4, bottom: 8 })
+  }
+
   build() {
     Stack() {
       Column() {
@@ -386,6 +397,9 @@ struct MccIndex {
 
         // 控制按钮区域
         this.ControlButtonsBuilder()
+
+        // 版本信息
+        this.VersionInfoBuilder()
       }
       .width('100%')
       .height('100%')

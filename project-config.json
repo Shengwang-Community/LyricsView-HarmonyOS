@@ -12,7 +12,7 @@
     "description": "SDK mode configuration: true for HAR package, false for source code"
   },
   "build": {
-    "harName": "Agora-LyricsView-HarmonyOS",
+    "harName": "Agora-LyricsView",
     "outputDir": "lyrics_view/build/default/outputs/default",
     "signing": {
       "enabled": false,
