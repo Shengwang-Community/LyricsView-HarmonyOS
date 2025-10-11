@@ -4,6 +4,7 @@ import { LyricsParser } from './internal/parser/LyricsParser';
 import { LyricModel } from './model/LyricModel';
 import { EventBus, KaraokeEvents, LyricsEvents, ScoringEvents } from './utils/EventBus';
 import { LogUtils } from './utils/LogUtils';
+import { VERSION } from './config/ProjectConfig';
 
 /**
  * Karaoke main controller
@@ -49,11 +50,24 @@ export class KaraokeView {
       return;
     }
 
+    // Output SDK version info
+    LogUtils.i('========================================');
+    LogUtils.i(`Version: ${KaraokeView.getSdkVersion()}`);
+    LogUtils.i('========================================');
+
     LogUtils.d('KaraokeView initialize');
     LogUtils.enableLog(true, true);
 
     // Setup drag event listeners
     this.setupDragEventListeners();
+  }
+
+  /**
+   * Get SDK version
+   * @returns SDK version string
+   */
+  static getSdkVersion(): string {
+    return VERSION;
   }
 
   /**
@@ -70,10 +84,10 @@ export class KaraokeView {
   /**
    * Parse lyrics data from file path or byte array
    *
-   * @param lyricSource              Lyrics file path (string) or byte data (Uint8Array)
-   * @param pitchSource              Pitch file path (string) or byte data (Uint8Array), optional
+   * @param lyricSource Lyrics file path (string) or byte data (Uint8Array)
+   * @param pitchSource Pitch file path (string) or byte data (Uint8Array), optional
    * @param includeCopyrightSentence Whether to include copyright information
-   * @param lyricOffset              Timing offset for lyrics
+   * @param lyricOffset Timing offset for lyrics
    * @return Parsed lyrics model
    */
   parseLyrics(
@@ -122,7 +136,7 @@ export class KaraokeView {
   /**
    * Set lyrics data and initialize scoring system
    *
-   * @param model                Lyrics model containing timing and text data
+   * @param model Lyrics model containing timing and text data
    * @param usingInternalScoring Whether to use internal scoring algorithm
    */
   setLyricData(model: LyricModel, usingInternalScoring: boolean = false): void {
@@ -141,7 +155,7 @@ export class KaraokeView {
    * Note: Can be obtained from AgoraRTC DRM callback method 'onPitch' (50ms interval)
    *
    * @param speakerPitch Current pitch value from singer (Hz, typically 80-2000)
-   * @param pitchScore   Current pitch score (0.0 to 100.0, float precision)
+   * @param pitchScore Current pitch score (0.0 to 100.0, float precision)
    */
   setPitch(speakerPitch: number, pitchScore: number): void {
     if (this.checkDestroyed()) {
@@ -155,7 +169,7 @@ export class KaraokeView {
       LogUtils.w(`Invalid pitch score: ${pitchScore}, expected 0.0-100.0`);
     }
 
-    //LogUtils.d(`KaraokeView:setPitch speakerPitch:${speakerPitch.toFixed(2)}, pitchScore:${pitchScore.toFixed(1)}, progressInMs:${Math.floor(progressInMs)}ms`);
+    //LogUtils.d(`KaraokeView:setPitch speakerPitch:${speakerPitch.toFixed(2)}, pitchScore:${pitchScore.toFixed(1)}, progressInMs:${Math.floor(progressInMs)}ms`) ;
 
     // Send pitch data to ScoringView via event bus
     this.eventBus.emit(ScoringEvents.SET_PITCH, speakerPitch, pitchScore);
@@ -176,7 +190,7 @@ export class KaraokeView {
       return;
     }
 
-    //LogUtils.d(`KaraokeView:setProgress progress:${progress}`);
+    //LogUtils.d(`KaraokeView:setProgress progress:${progress}`) ;
     // Notify components via event bus
     this.eventBus.emit(LyricsEvents.SET_PROGRESS, progress);
     this.eventBus.emit(ScoringEvents.SET_PROGRESS, progress);

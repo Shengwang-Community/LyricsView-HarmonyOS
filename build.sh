@@ -113,41 +113,9 @@ generate_config() {
     node "$PROJECT_ROOT/scripts/generate-config.js"
     print_info "已生成: entry/src/main/ets/utils/BuildConfig.ets"
     
-    # 根据SDK模式处理entry导入方式
+    # SDK 模式的 HAR 包配置将在 build_har 之后处理
     if [ "$SDK_MODE" = "true" ]; then
-        print_info "SDK模式为HAR包模式，配置entry使用HAR包导入"
-        
-        # 确保entry/libs目录存在
-        local ENTRY_LIBS_DIR="$PROJECT_ROOT/entry/libs"
-        if [ ! -d "$ENTRY_LIBS_DIR" ]; then
-            mkdir -p "$ENTRY_LIBS_DIR"
-        fi
-        
-        # 复制HAR包到entry/libs目录
-        local VERSION=$(get_version)
-        local HAR_SOURCE="$PROJECT_ROOT/releases/v${VERSION}/Agora-LyricsView-${VERSION}.har"
-        local HAR_FILENAME="Agora-LyricsView-${VERSION}.har"
-        local HAR_TARGET="$ENTRY_LIBS_DIR/$HAR_FILENAME"
-        
-        if [ -f "$HAR_SOURCE" ]; then
-            cp "$HAR_SOURCE" "$HAR_TARGET"
-            print_info "已复制HAR包到: $HAR_TARGET"
-            
-            # 修改entry/oh-package.json5使用HAR包导入
-            local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
-            if [ -f "$ENTRY_PACKAGE" ]; then
-                # 使用sed替换导入路径
-                sed -i '' "s|\"@shengwang/lyrics-view\": \"file:../lyrics_view\"|\"@shengwang/lyrics-view\": \"file:./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
-                sed -i '' "s|\"path\": \"../lyrics_view\"|\"path\": \"./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
-                
-                # 更新entry源码中的导入语句
-                updateEntryImports "har"
-                
-                print_info "已更新entry导入配置为HAR包模式"
-            fi
-        else
-            print_warning "HAR包不存在: $HAR_SOURCE，将使用源码导入"
-        fi
+        print_info "SDK模式为HAR包模式，将在编译HAR后配置entry"
     else
         print_info "SDK模式为源码模式，使用源码导入"
         
@@ -261,6 +229,56 @@ build_har() {
     fi
 }
 
+# 配置 entry 使用 HAR 包（SDK 模式）
+configure_entry_har() {
+    print_step "配置 entry 使用 HAR 包..."
+    
+    # 获取版本和配置
+    local VERSION=$(get_version)
+    local HAR_NAME=$(node "$CONFIG_MANAGER" get build.harName)
+    local HAR_FILENAME="${HAR_NAME}-${VERSION}.har"
+    local SDK_MODE=$(node "$CONFIG_MANAGER" sdk-mode)
+    
+    if [ "$SDK_MODE" != "true" ]; then
+        print_info "SDK 模式未启用，跳过 HAR 包配置"
+        return 0
+    fi
+    
+    # 确保 entry/libs 目录存在
+    local ENTRY_LIBS_DIR="$PROJECT_ROOT/entry/libs"
+    mkdir -p "$ENTRY_LIBS_DIR"
+    
+    # 复制刚编译好的 HAR 包到 entry/libs
+    local HAR_SOURCE="$PROJECT_ROOT/lyrics_view/build/default/outputs/default/$HAR_FILENAME"
+    local HAR_TARGET="$ENTRY_LIBS_DIR/$HAR_FILENAME"
+    
+    if [ -f "$HAR_SOURCE" ]; then
+        cp "$HAR_SOURCE" "$HAR_TARGET"
+        print_success "已复制 HAR 包到: $HAR_TARGET"
+        
+        # 更新 entry/oh-package.json5
+        local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
+        if [ -f "$ENTRY_PACKAGE" ]; then
+            # 备份原文件
+            cp "$ENTRY_PACKAGE" "${ENTRY_PACKAGE}.bak"
+            
+            # 使用 sed 替换导入路径
+            sed -i '' "s|\"@shengwang/lyrics-view\": \"file:../lyrics_view\"|\"@shengwang/lyrics-view\": \"file:./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
+            sed -i '' "s|\"path\": \"../lyrics_view\"|\"path\": \"./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
+            
+            # 更新 entry 源码中的导入语句
+            updateEntryImports "har"
+            
+            print_success "已更新 entry 导入配置为 HAR 包模式"
+            print_info "配置文件: $ENTRY_PACKAGE"
+            print_info "HAR 引用: file:./libs/$HAR_FILENAME"
+        fi
+    else
+        print_error "HAR 包不存在: $HAR_SOURCE"
+        exit 1
+    fi
+}
+
 # 编译 HAP 包
 build_hap() {
     local BUILD_TYPE=${1:-release}
@@ -272,19 +290,30 @@ build_hap() {
     local VERSION=$(get_version)
     print_info "当前版本: $VERSION"
     
-    # 确保 lyrics_view HAR 包已复制到 entry/libs
-    print_step "准备依赖文件..."
+    # 检查依赖文件（SDK 模式下应该已经由 configure_entry_har 处理）
+    print_step "检查依赖文件..."
+    local SDK_MODE=$(node "$CONFIG_MANAGER" sdk-mode)
     local HAR_NAME=$(node "$CONFIG_MANAGER" get build.harName)
-    local LYRICS_HAR_SOURCE="lyrics_view/build/default/outputs/default/${HAR_NAME}-${VERSION}.har"
     local LYRICS_HAR_FILENAME="${HAR_NAME}-${VERSION}.har"
     local LYRICS_HAR_TARGET="entry/libs/$LYRICS_HAR_FILENAME"
     
-    if [ -f "$LYRICS_HAR_SOURCE" ]; then
-        mkdir -p entry/libs
-        cp "$LYRICS_HAR_SOURCE" "$LYRICS_HAR_TARGET"
-        print_info "已复制 $LYRICS_HAR_FILENAME 到 entry/libs"
+    if [ "$SDK_MODE" = "true" ]; then
+        if [ -f "$LYRICS_HAR_TARGET" ]; then
+            print_info "HAR 包已就绪: $LYRICS_HAR_FILENAME"
+        else
+            print_warning "未找到 HAR 包，尝试复制..."
+            local LYRICS_HAR_SOURCE="lyrics_view/build/default/outputs/default/$LYRICS_HAR_FILENAME"
+            if [ -f "$LYRICS_HAR_SOURCE" ]; then
+                mkdir -p entry/libs
+                cp "$LYRICS_HAR_SOURCE" "$LYRICS_HAR_TARGET"
+                print_info "已复制 $LYRICS_HAR_FILENAME 到 entry/libs"
+            else
+                print_error "HAR 包不存在: $LYRICS_HAR_SOURCE"
+                exit 1
+            fi
+        fi
     else
-        print_warning "未找到 $LYRICS_HAR_FILENAME，将使用现有的 HAR 包"
+        print_info "源码模式，使用 lyrics_view 源码"
     fi
     
     # 安装依赖
@@ -412,11 +441,18 @@ build_release() {
     print_step "🔨 编译 Release 版本 HAR 包..."
     build_har release
     
-    # 4. 编译 Release 版本 HAP 包
+    # 4. 如果是 SDK 模式，配置 entry 使用 HAR 包
+    local SDK_MODE=$(node "$CONFIG_MANAGER" sdk-mode)
+    if [ "$SDK_MODE" = "true" ]; then
+        print_step "⚙️  配置 entry 使用 HAR 包..."
+        configure_entry_har
+    fi
+    
+    # 5. 编译 Release 版本 HAP 包
     print_step "📱 编译 Release 版本 HAP 包..."
     build_hap release
     
-    # 5. 准备发布文件
+    # 6. 准备发布文件
     print_step "📦 准备发布文件..."
     local RELEASE_DIR="releases/v$VERSION"
     mkdir -p "$RELEASE_DIR"
