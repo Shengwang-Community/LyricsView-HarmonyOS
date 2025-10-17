@@ -8,6 +8,8 @@ import {
   IMediaPlayerObserver,
   IMusicContentCenterEventHandler,
   IRtcEngineEventHandler,
+  IScoreEventHandler,
+  LineScoreData,
   LyricInfo,
   Music,
   MusicChartInfo,
@@ -15,16 +17,12 @@ import {
   MusicContentCenterVendorId,
   PlayerPlaybackStats,
   PlayerUpdatedInfo,
+  RawScoreData,
   RtcEngine,
   RtcEngineConfig,
   RtcStats,
   SrcInfo
 } from '@shengwang/rtc-full';
-import {
-  IScoreEventHandler,
-  LineScoreData,
-  RawScoreData
-} from '@shengwang/rtc-full/src/main/ets/export/IAgoraMusicContentCenter';
 import { Utils } from '@shengwang/lyrics-view';
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { ExampleConstants } from '../utils/ExampleConstants';

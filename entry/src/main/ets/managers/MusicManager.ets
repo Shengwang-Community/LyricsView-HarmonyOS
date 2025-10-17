@@ -129,7 +129,7 @@ export class MusicManager implements IMccCallback {
    * Play music
    */
   playMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager playMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager playMusic`);
 
     if (this.status === PlaybackStatus.PAUSED || this.status === PlaybackStatus.PLAYING) {
       this.pauseOrResumeMusic();
@@ -166,7 +166,7 @@ export class MusicManager implements IMccCallback {
    * Start playing (through scoring system)
    */
   private openMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager openMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager openMusic`);
 
     if (this.musicResources.length === 0) {
       console.error(`${MusicManager.TAG} no music resources available`);
@@ -186,7 +186,7 @@ export class MusicManager implements IMccCallback {
    * Stop music
    */
   stopMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager stopMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager stopMusic`);
 
     if (this.status === PlaybackStatus.IDLE) {
       return;
@@ -203,7 +203,7 @@ export class MusicManager implements IMccCallback {
    * Pause music
    */
   private pauseMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager pauseMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager pauseMusic`);
 
     if (this.status !== PlaybackStatus.PLAYING) {
       return;
@@ -217,7 +217,7 @@ export class MusicManager implements IMccCallback {
    * Resume music
    */
   private resumeMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager resumeMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager resumeMusic`);
 
     if (this.status !== PlaybackStatus.PAUSED) {
       return;
@@ -236,7 +236,7 @@ export class MusicManager implements IMccCallback {
    * Pause or resume music
    */
   pauseOrResumeMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager pauseOrResumeMusic status:${this.status}`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager pauseOrResumeMusic status:${this.status}`);
 
     if (this.status === PlaybackStatus.PLAYING) {
       this.pauseMusic();
@@ -250,7 +250,7 @@ export class MusicManager implements IMccCallback {
    * @param position - Target position (ms)
    */
   seekMusic(position: number): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager seekMusic:${position}`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager seekMusic:${position}`);
     this.lyricsCurrentProgress = position;
 
     // Reinitialize timestamp when seeking
@@ -278,7 +278,7 @@ export class MusicManager implements IMccCallback {
    * Switch to next song
    */
   switchMusic(): void {
-    ExampleLogUtils.logDebug(MusicManager.TAG, `MuiscManager switchMusic`);
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager switchMusic`);
 
     this.lyricsCurrentProgress = 0;
     this.rtcMccManager?.stop();
