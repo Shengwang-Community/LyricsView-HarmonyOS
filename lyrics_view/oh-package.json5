@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "HarmonyOS LyricsView component with karaoke functionality",
   "main": "Index.ets",
-  "author": "Agora",
+  "author": "shengwang",
   "license": "Apache-2.0",
   "keywords": [
     "lyrics",
