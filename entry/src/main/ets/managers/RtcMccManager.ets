@@ -128,6 +128,9 @@ export class RtcMccManager {
       ExampleLogUtils.logDebug(RtcMccManager.TAG,
         `onLyricResult requestId:${requestId} songCode:${internalSongCode} payload:${payload} reason:${reason}`);
       this.handleLyricResult(internalSongCode, payload);
+      Promise.resolve().then(() => {
+        this.callback?.onMusicPreloadResult?.(internalSongCode, 100);
+      });
     },
 
     onLyricInfoResult: (requestId: string, internalSongCode: bigint, lyricInfo: LyricInfo,
@@ -492,14 +495,15 @@ export class RtcMccManager {
   /**
    * Preload music
    */
-  preloadMusic(songCode: string, vendorId: MusicContentCenterVendorId, songOptionJson: string): void {
+  preloadMusic(songCode: string, vendorId: MusicContentCenterVendorId, songOptionJson: string,
+    lyricType: number): void {
     if (!this.musicCenter) {
       console.error(`${RtcMccManager.TAG} MCC not initialized`);
       return;
     }
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG,
-      `preloadMusic songCode:${songCode} vendorId:${vendorId} songOptionJson：${songOptionJson}`);
+      `preloadMusic songCode:${songCode} vendorId:${vendorId} songOptionJson：${songOptionJson} lyricType:${lyricType}`);
 
     try {
       const internalSongCode: bigint = this.musicCenter.getInternalSongCode(vendorId, songCode, songOptionJson);
@@ -509,8 +513,14 @@ export class RtcMccManager {
       const isPreloaded: number = this.musicCenter.isPreloaded(internalSongCode);
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload state:${isPreloaded}`);
 
-      const requestId: string = this.musicCenter.preload(internalSongCode);
-      ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload requestId:${requestId}`);
+      if (isPreloaded == 0) {
+        ExampleLogUtils.logDebug(RtcMccManager.TAG,
+          `preloadMusic songCode:${songCode}  preloaded getLyric  request with lyricType:${lyricType}`);
+        this.musicCenter.getLyric(internalSongCode, lyricType);
+      } else {
+        const requestId: string = this.musicCenter.preload(internalSongCode);
+        ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload requestId:${requestId}`);
+      }
     } catch (error) {
       console.error(`${RtcMccManager.TAG} preloadMusic error:`, JSON.stringify(error));
     }
@@ -691,12 +701,11 @@ export class RtcMccManager {
       return;
     }
 
-    // const caches = this.musicCenter.getCaches(); // API may not exist
-    const caches: CacheStatistics[] = []; // placeholder
+    const caches = this.musicCenter.getCaches(); // API may not exist
     for (const cache of caches) {
-      // this.musicCenter.removeCache(cache.songCode); // API may not exist
-      // ExampleLogUtils.logDebug(RtcMccManager.TAG, `would remove cache: ${cache.songCode}`); // Temporarily commented to avoid API errors
-      ExampleLogUtils.logDebug(RtcMccManager.TAG, `would remove cache`);
+      this.musicCenter.removeCache(cache.songCode); // API may not exist
+      ExampleLogUtils.logDebug(RtcMccManager.TAG,
+        `would remove cache: ${cache.songCode}`); // Temporarily commented to avoid API errors
     }
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `clearCache completed`);
   }
@@ -708,7 +717,7 @@ export class RtcMccManager {
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `destroy called`);
 
     // Unregister observer
-    // this.musicPlayer?.unRegisterPlayerObserver(this.mediaPlayerObserver); // API may not exist
+    this.musicPlayer?.unRegisterPlayerObserver(); // API may not exist
 
     // Destroy music player
     if (this.musicPlayer && this.musicCenter) {

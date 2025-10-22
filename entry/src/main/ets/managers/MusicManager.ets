@@ -39,7 +39,7 @@ export class MusicManager implements IMccCallback {
   private positionUpdateStartTime: number = 0; // System time when timer started
   private positionUpdateStartPosition: number = 0; // Music position when timer started
   // Music configuration
-  private lyricType: Constants.LyricSourceType = 0; // LYRIC_SOURCE_XML = 0
+  private lyricType: Constants.LyricSourceType = Constants.LyricSourceType.XML;
   private musicPlayMode: Constants.MusicPlayMode = Constants.MusicPlayMode.ORIGINAL;
   private isOriginal: boolean = true;
   // Music resources
@@ -98,12 +98,10 @@ export class MusicManager implements IMccCallback {
 
     switch (vendorId) {
       case MusicContentCenterVendorId.DEFAULT:
-        this.lyricType = Constants.LyricSourceType.XML;
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor1MusicList();
         break;
       case MusicContentCenterVendorId.VENDOR_2:
-        this.lyricType = Constants.LyricSourceType.KRC;
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor2MusicList();
         break;
@@ -150,7 +148,7 @@ export class MusicManager implements IMccCallback {
     // Set lyrics type based on vendor
     if (currentMusic.vendorId === MusicContentCenterVendorId.VENDOR_2) {
       //TODO LyricType 0: xml 1: lrc 2: lrc with pitches 3: krc
-      this.lyricType = Constants.LyricSourceType.KRC; // LYRIC_SOURCE_KRC = 1
+      this.lyricType = Constants.LyricSourceType.KRC;
     }
 
     this.status = PlaybackStatus.LOADING;
@@ -158,7 +156,8 @@ export class MusicManager implements IMccCallback {
     this.rtcMccManager?.preloadMusic(
       currentMusic.songCode,
       currentMusic.vendorId,
-      currentMusic.songOptionJson
+      currentMusic.songOptionJson,
+      this.lyricType.valueOf()
     );
   }
 
@@ -543,6 +542,7 @@ export class MusicManager implements IMccCallback {
    * Set lyric type
    */
   setLyricType(lyricType: Constants.LyricSourceType): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager setLyricType:${lyricType}`);
     this.lyricType = lyricType;
   }
 

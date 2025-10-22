@@ -1,5 +1,6 @@
 import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
-
+import { SettingsDialog } from '../components/SettingsDialog';
+import { SettingsConfig } from '../models/SettingsConfig';
 import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 
 /**
@@ -17,8 +18,27 @@ import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 @ComponentV2
 struct MccIndex {
   @Local private viewModel: MccKaraokeViewModel = new MccKaraokeViewModel();
+  // 设置对话框控制器
+  private settingsDialogController: CustomDialogController = new CustomDialogController({
+    builder: SettingsDialog({
+      onConfirm: () => {
+        // 设置确定后，重新加载并应用配置
+        this.viewModel.reloadAndApplySettings();
+      },
+      onClearCache: () => {
+        // 清空缓存
+        this.viewModel.clearCache();
+      }
+    }),
+    alignment: DialogAlignment.Center,
+    autoCancel: true,
+    customStyle: true
+  });
 
   aboutToAppear() {
+    // 初始化设置配置
+    SettingsConfig.initialize();
+
     // 初始化 ViewModel
     this.viewModel.initialize();
   }
@@ -57,7 +77,7 @@ struct MccIndex {
     .width('100%')
     .height(50)
     .padding({ left: 16, right: 16 })
-    .justifyContent(FlexAlign.Start)
+    .justifyContent(FlexAlign.SpaceBetween)
   }
 
   @Builder
@@ -331,12 +351,12 @@ struct MccIndex {
           this.viewModel.toggleOriginalTrack();
         })
 
-      Button('切换Vendor')
+      Button('设置')
         .fontSize(14)
         .backgroundColor('#795548')
         .enabled(!this.viewModel.uiState.isLoading)
         .onClick(() => {
-          this.viewModel.switchServiceType();
+          this.settingsDialogController.open();
         })
 
     }

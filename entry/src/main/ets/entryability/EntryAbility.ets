@@ -1,10 +1,10 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
 import { contextManager } from '../utils/ContextManager';
+import { preferenceManager } from '../utils/PreferenceManager';
 import { PermissionUtil } from '../utils/PermissionUtil';
 import { ExampleConstants } from '../utils/ExampleConstants';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
-
 
 export default class EntryAbility extends UIAbility {
   private static readonly TAG = ExampleConstants.APP_TAG + '-EntryAbility';
@@ -13,6 +13,15 @@ export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     // Initialize global Context manager
     contextManager.setContext(this.context);
+
+    // Initialize PreferenceManager
+    preferenceManager.initialize(this.context).then((success) => {
+      if (success) {
+        ExampleLogUtils.logDebug(EntryAbility.TAG, 'PreferenceManager initialized successfully');
+      } else {
+        ExampleLogUtils.logDebug(EntryAbility.TAG, 'Failed to initialize PreferenceManager');
+      }
+    });
 
     // Request essential permissions
     this.requestEssentialPermissions();

@@ -10,6 +10,7 @@ import { ContextManager } from '../utils/ContextManager';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
 import { KeyCenter, TokenCallback, TokenResponse, YSDTokenCallback, YSDTokenResponse } from '../utils/KeyCenter';
 import { PermissionUtil } from '../utils/PermissionUtil';
+import { preferenceManager } from '../utils/PreferenceManager';
 import { BaseViewModel } from './BaseViewModel';
 
 import { IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel } from '@shengwang/lyrics-view';
@@ -61,8 +62,68 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
   async initialize(): Promise<void> {
     await super.initialize();
 
+    // 从配置中加载 Vendor 类型
+    await this.loadVendorFromPreference();
+
     // 检查权限并初始化
     await this.checkAndRequestPermissions();
+  }
+
+  /**
+   * 从 Preference 加载 Vendor 配置
+   */
+  private async loadVendorFromPreference(): Promise<void> {
+    try {
+      if (preferenceManager.isInitialized()) {
+        // 直接获取 MusicContentCenterVendorId，不需要转换
+        const vendorId = await preferenceManager.getVendorType();
+
+        this.currentVendorId = vendorId as MusicContentCenterVendorId;
+
+        const lyricType = await preferenceManager.getLyricsType();
+        
+        this.musicManager.setLyricType(lyricType)
+
+        this.songInfo.vendorName = this.getVendorName();
+
+        ExampleLogUtils.logDebug(this.TAG, `Loaded vendor from preference: ${vendorId}`);
+      }
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to load vendor from preference: ${error}`);
+    }
+  }
+
+  /**
+   * 重新加载配置并应用
+   * 供外部调用（如设置对话框确定后）
+   */
+  async reloadAndApplySettings(): Promise<void> {
+    try {
+      ExampleLogUtils.logDebug(this.TAG, 'Reloading settings from preference...');
+
+      // 停止当前播放
+      this.stopPlayback();
+
+      // 重置 KaraokeView
+      this.karaokeView?.reset();
+
+      // 从配置加载 Vendor
+      await this.loadVendorFromPreference();
+
+      // 更新 MusicManager 的 Vendor
+      this.musicManager.updateMusicVendor(this.currentVendorId);
+
+      // 更新歌曲信息
+      this.updateCurrentSongInfo();
+
+      const typeName = this.getVendorName();
+      this.uiState.setSuccess(`已应用设置: ${typeName}`);
+
+      ExampleLogUtils.logDebug(this.TAG, `Settings applied: vendor=${this.currentVendorId}`);
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to reload and apply settings: ${error}`);
+      this.uiState.setError('应用设置失败');
+    }
   }
 
   /**
@@ -332,8 +393,11 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     // Switch service type
     this.currentVendorId =
       this.currentVendorId === MusicContentCenterVendorId.DEFAULT ? MusicContentCenterVendorId.VENDOR_2 :
-      MusicContentCenterVendorId.DEFAULT;
+        MusicContentCenterVendorId.DEFAULT;
     this.musicManager.updateMusicVendor(this.currentVendorId);
+
+    // 保存 Vendor 配置到 Preference
+    this.saveVendorToPreference(this.currentVendorId);
 
     // Update song information
     this.updateCurrentSongInfo();
@@ -342,6 +406,21 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
     this.uiState.setSuccess(`vendor切到 ${typeName}`); // API may not exist
 
     this.songInfo.vendorName = typeName;
+  }
+
+  /**
+   * 保存 Vendor 配置到 Preference
+   */
+  private saveVendorToPreference(vendorId: MusicContentCenterVendorId): void {
+    try {
+      if (preferenceManager.isInitialized()) {
+        // 直接保存 MusicContentCenterVendorId，不需要转换
+        preferenceManager.saveVendorType(vendorId);
+        ExampleLogUtils.logDebug(this.TAG, `Saved vendor to preference: ${vendorId}`);
+      }
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to save vendor to preference: ${error}`);
+    }
   }
 
   // ==================== IMccCallback Implementation ====================
@@ -548,6 +627,11 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
     super.destroy();
     ExampleLogUtils.logDebug(this.TAG, 'MccKaraokeViewModel destroyed');
+  }
+
+  clearCache() {
+    ExampleLogUtils.logDebug(this.TAG, 'Clearing cache...');
+    this.musicManager.clearCache();
   }
 }
 
