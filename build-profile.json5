@@ -13,12 +13,39 @@
           "storeFile": "/Users/yanzhennan/.ohos/config/default_Agora_LyricsView_HarmonyOS_JCzIwGB_E4qpsGTRz0U0DHlHm_4t2_2rBna05LODhaU=.p12",
           "storePassword": "0000001BC20A1BFE2DC8298CEED6AC7A057879EB1F1C42D17714FCFBEEBB97AB9C32E256036CA63E3022D7"
         }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "./signing/lyricsview.p12",
+          "storePassword": "00000019B4FFED79DCE658E43BEE4B9D68EA38F8B8DC254E229B807D7D847B64EE0A6864A8B14279F3",
+          "keyAlias": "lyricsview_key",
+          "keyPassword": "000000191D5CB40C7C531518C31835C05F512B1C3730BD5151FFDD46A209806B5372A3C13578BFC33C",
+          "signAlg": "SHA256withECDSA",
+          "profile": "./signing/lyricsviewDebug.p7b",
+          "certpath": "./signing/lyricsview.cer"
+        }
       }
     ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
+        "targetSdkVersion": "6.0.0(20)",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          },
+          "nativeCompiler": "BiSheng"
+        }
+      },
+      {
+        "name": "release",
+        "signingConfig": "release",
         "targetSdkVersion": "6.0.0(20)",
         "compatibleSdkVersion": "5.0.0(12)",
         "runtimeOS": "HarmonyOS",
@@ -48,7 +75,8 @@
         {
           "name": "default",
           "applyToProducts": [
-            "default"
+            "default",
+            "release"
           ]
         }
       ]
@@ -60,7 +88,8 @@
         {
           "name": "default",
           "applyToProducts": [
-            "default"
+            "default",
+            "release"
           ]
         }
       ]

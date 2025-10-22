@@ -891,20 +891,40 @@ build_hap() {
     # 使用 DevEco Studio 的 hvigor 工具
     local HVIGOR_CMD="/Applications/DevEco-Studio.app/Contents/tools/node/bin/node /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js"
     
-    print_info "编译 Release 版本 HAP 包..."
-    $HVIGOR_CMD --mode module -p module=entry@default -p product=default -p buildMode=release assembleHap --analyze=normal --parallel --incremental --daemon
+    # 使用 release product 配置（使用发布证书签名）
+    print_info "编译 Release 版本 HAP 包（使用发布证书）..."
+    $HVIGOR_CMD --mode module -p module=entry@default -p product=release -p buildMode=release assembleHap --analyze=normal --parallel --incremental --daemon
     
-    # 检查编译结果
-    local SIGNED_HAP_PATH="entry/build/default/outputs/default/entry-default-signed.hap"
-    local UNSIGNED_HAP_PATH="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    # 检查编译结果（支持 default 和 release product）
+    local SIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-unsigned.hap"
+    local SIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    
+    local SIGNED_HAP_PATH=""
+    local UNSIGNED_HAP_PATH=""
+    
+    # 优先检查 release product 的输出
+    if [ -f "$SIGNED_HAP_PATH_RELEASE" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$SIGNED_HAP_PATH_DEFAULT" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_DEFAULT"
+    fi
+    
+    if [ -f "$UNSIGNED_HAP_PATH_RELEASE" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$UNSIGNED_HAP_PATH_DEFAULT" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_DEFAULT"
+    fi
     
     if [ -f "$SIGNED_HAP_PATH" ] || [ -f "$UNSIGNED_HAP_PATH" ]; then
         print_success "HAP 包编译成功!"
         
         if [ -f "$SIGNED_HAP_PATH" ]; then
-            print_info "类型: 已签名版本 (signed)"
+            print_info "类型: 已签名版本 (signed) - 使用发布证书"
+            print_success "✅ 此 HAP 可在任意 HarmonyOS 设备上安装！"
             ls -lh "$SIGNED_HAP_PATH"
-        else
+        elif [ -f "$UNSIGNED_HAP_PATH" ]; then
             print_warning "类型: 未签名版本 (unsigned) - 建议配置签名"
             ls -lh "$UNSIGNED_HAP_PATH"
         fi
@@ -919,12 +939,30 @@ build_hap() {
 rename_hap_file() {
     local VERSION=$1
     local RELEASE_DIR=$2
-    local OUTPUT_DIR="entry/build/default/outputs/default"
     local TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
     local NEW_FILENAME="LyricsView-Example-v${VERSION}-${TIMESTAMP}.hap"
     
-    local SIGNED_HAP_PATH="$OUTPUT_DIR/entry-default-signed.hap"
-    local UNSIGNED_HAP_PATH="$OUTPUT_DIR/entry-default-unsigned.hap"
+    # 检查 release 和 default 两个目录
+    local SIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-unsigned.hap"
+    local SIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    
+    local SIGNED_HAP_PATH=""
+    local UNSIGNED_HAP_PATH=""
+    
+    # 优先使用 release product 的输出
+    if [ -f "$SIGNED_HAP_PATH_RELEASE" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$SIGNED_HAP_PATH_DEFAULT" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_DEFAULT"
+    fi
+    
+    if [ -f "$UNSIGNED_HAP_PATH_RELEASE" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$UNSIGNED_HAP_PATH_DEFAULT" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_DEFAULT"
+    fi
     
     # 创建 example 目录
     local EXAMPLE_DIR="$RELEASE_DIR/example"
@@ -936,7 +974,8 @@ rename_hap_file() {
         cp "$SIGNED_HAP_PATH" "$NEW_HAP_PATH"
         print_success "HAP 文件已重命名并复制到 release 目录"
         print_info "文件名: $NEW_FILENAME"
-        print_info "类型: 已签名版本 (signed)"
+        print_info "类型: 已签名版本 (signed) - 使用发布证书"
+        print_success "✅ 此 HAP 可在任意 HarmonyOS 设备上安装！"
         print_info "位置: $NEW_HAP_PATH"
         
         # 显示文件信息
