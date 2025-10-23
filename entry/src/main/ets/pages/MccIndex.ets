@@ -117,7 +117,8 @@ struct MccIndex {
       paddingTop: this.lyricsConfig.paddingTop,
       labelWhenNoLyrics: this.lyricsConfig.labelWhenNoLyrics,
       enableLineWrap: this.lyricsConfig.enableLineWrap,
-      enableDragging: this.lyricsConfig.enableDragging,
+      // Only enable dragging when both config allows it AND music is playing
+      enableDragging: this.lyricsConfig.enableDragging && this.viewModel.playbackState.isPlaying,
       enableOpacityEffect: this.lyricsConfig.enableOpacityEffect,
       enablePreviousLines: this.lyricsConfig.enablePreviousLines,
       enableUpcomingLines: this.lyricsConfig.enableUpcomingLines,
