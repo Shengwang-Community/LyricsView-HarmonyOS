@@ -551,6 +551,15 @@ export class MusicManager implements IMccCallback {
   }
 
   /**
+   * Set score level
+   * @param level - Score level (1-5)
+   */
+  setScoreLevel(level: number): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager setScoreLevel:${level}`);
+    this.rtcMccManager?.setScoreLevel(level);
+  }
+
+  /**
    * Get channel ID
    */
   getChannelId(): string {

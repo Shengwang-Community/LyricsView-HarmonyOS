@@ -14,6 +14,7 @@ export struct SettingsDialog {
   @State private selectedVendorId: VendorType = VendorType.DEFAULT;
   @State private selectedLyricsType: Constants.LyricSourceType = Constants.LyricSourceType.XML;
   @State private availableLyricsTypes: Constants.LyricSourceType[] = [];
+  @State private selectedScoreLevel: number = 5; // 打分等级 1-5
   // LyricsView 配置
   @State private lyricsConfig: LyricsViewConfig = new LyricsViewConfig();
   // ScoringView 配置
@@ -25,6 +26,7 @@ export struct SettingsDialog {
     // 加载当前设置
     this.selectedVendorId = SettingsConfig.getVendorId();
     this.selectedLyricsType = SettingsConfig.getLyricsType();
+    this.selectedScoreLevel = SettingsConfig.getScoreLevel();
     this.updateAvailableLyricsTypes();
 
     // 加载 LyricsView 配置
@@ -65,6 +67,16 @@ export struct SettingsDialog {
 
     // 立即保存到配置
     await SettingsConfig.setLyricsType(lyricsType);
+  }
+
+  /**
+   * 打分等级改变 - 立即保存
+   */
+  private async onScoreLevelChange(level: number): Promise<void> {
+    this.selectedScoreLevel = level;
+
+    // 立即保存到配置
+    await SettingsConfig.setScoreLevel(level);
   }
 
   /**
@@ -378,6 +390,33 @@ export struct SettingsDialog {
                 this.onLyricsTypeChange(Constants.LyricSourceType.KRC);
               }
             })
+        }
+        .width('100%')
+        .padding({ left: 8, right: 8 })
+      }
+      .width('100%')
+      .padding({ top: 12, bottom: 12 })
+      .borderRadius(8)
+      .backgroundColor('#F5F5F5')
+      .margin({ bottom: 12 })
+
+      // 打分等级选择
+      Column() {
+        this.SettingItemTitle('打分等级')
+
+        Row({ space: 8 }) {
+          ForEach([1, 2, 3, 4, 5], (level: number) => {
+            Button(`${level}`)
+              .type(ButtonType.Normal)
+              .fontSize(14)
+              .height(36)
+              .layoutWeight(1)
+              .backgroundColor(this.selectedScoreLevel === level ? '#2196F3' : '#E0E0E0')
+              .fontColor(this.selectedScoreLevel === level ? '#FFFFFF' : '#666666')
+              .onClick(() => {
+                this.onScoreLevelChange(level);
+              })
+          })
         }
         .width('100%')
         .padding({ left: 8, right: 8 })

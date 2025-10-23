@@ -21,13 +21,13 @@ import {
   RtcEngine,
   RtcEngineConfig,
   RtcStats,
+  ScoreLevel,
   SrcInfo
 } from '@shengwang/rtc-full';
 import { Utils } from '@shengwang/lyrics-view';
 import { IMccCallback } from '../interfaces/IMccCallback';
 import { ExampleConstants } from '../utils/ExampleConstants';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
-
 
 /**
  * YinSuDa API response data structure
@@ -95,6 +95,8 @@ export class RtcMccManager {
   private callback: IMccCallback | null = null;
   // Status flags
   private isJoined: boolean = false;
+  // scoring level (1-5)
+  private scoreLevel: number = 5;
   /**
    * MCC event handler
    */
@@ -151,9 +153,11 @@ export class RtcMccManager {
         `onStartScoreResult songCode:${internalSongCode} state:${state} reason:${reason}`);
 
       if (state === Constants.MusicContentCenterState.START_SCORE_COMPLETED &&
-        reason === Constants.MusicContentCenterStateReason.OK) { // START_SCORE_COMPLETED = 0, REASON_OK = 0
-        // Set score level
-        this.musicCenter?.setScoreLevel(5);
+        reason === Constants.MusicContentCenterStateReason.OK) {
+        // Set score level using configured value
+        const level = this.getScoreLevelEnum(this.scoreLevel);
+        this.musicCenter?.setScoreLevel(level);
+        ExampleLogUtils.logDebug(RtcMccManager.TAG, `Set score level to: ${this.scoreLevel} (${level})`);
         // Open music player
         this.openMusicBySongCode(internalSongCode);
       }
@@ -366,7 +370,6 @@ export class RtcMccManager {
     ExampleLogUtils.logDebug(RtcMccManager.TAG, `MCC initialized successfully`);
   }
 
-
   /**
    * Add MCC vendors
    * Only called after successfully joining the channel
@@ -422,7 +425,6 @@ export class RtcMccManager {
 
     ExampleLogUtils.logDebug(RtcMccManager.TAG, 'MCC vendors added successfully');
   }
-
 
   /**
    * Handle lyric result
@@ -514,9 +516,9 @@ export class RtcMccManager {
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload state:${isPreloaded}`);
 
       // if (isPreloaded == 0) {
-      //   ExampleLogUtils.logDebug(RtcMccManager.TAG,
-      //     `preloadMusic songCode:${songCode}  preloaded getLyric  request with lyricType:${lyricType}`);
-      //   this.musicCenter.getLyric(internalSongCode, lyricType);
+      // ExampleLogUtils.logDebug(RtcMccManager.TAG,
+      // `preloadMusic songCode:${songCode} preloaded getLyric request with lyricType:${lyricType}`) ;
+      // this.musicCenter.getLyric(internalSongCode, lyricType)                                      ;
       // } else {
       const requestId: string = this.musicCenter.preload(internalSongCode);
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload requestId:${requestId}`);
@@ -767,5 +769,39 @@ export class RtcMccManager {
    */
   isChannelJoined(): boolean {
     return this.isJoined;
+  }
+
+  /**
+   * Set score level
+   * @param level - Score level (1-5)
+   */
+  setScoreLevel(level: number): void {
+    if (level < ScoreLevel.LEVEL_1 || level > ScoreLevel.LEVEL_5) {
+      ExampleLogUtils.logWarn(RtcMccManager.TAG, `Invalid score level: ${level}, must be 1-5`);
+      return;
+    }
+    this.scoreLevel = level;
+    ExampleLogUtils.logDebug(RtcMccManager.TAG, `Score level set to: ${level}`);
+  }
+
+  /**
+   * Get score level enum from number
+   * @param level - Score level (1-5)
+   * @returns ScoreLevel enum
+   */
+  private getScoreLevelEnum(level: number): ScoreLevel {
+    switch (level) {
+      case 1:
+        return ScoreLevel.LEVEL_1;
+      case 2:
+        return ScoreLevel.LEVEL_2;
+      case 3:
+        return ScoreLevel.LEVEL_3;
+      case 4:
+        return ScoreLevel.LEVEL_4;
+      case 5:
+      default:
+        return ScoreLevel.LEVEL_5;
+    }
   }
 }

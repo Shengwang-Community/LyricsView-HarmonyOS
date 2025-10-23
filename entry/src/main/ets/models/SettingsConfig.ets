@@ -1,4 +1,4 @@
-import { Constants, MusicContentCenterVendorId } from '@shengwang/rtc-full';
+import { Constants, MusicContentCenterVendorId, ScoreLevel } from '@shengwang/rtc-full';
 import { ExampleConstants } from '../utils/ExampleConstants';
 import { preferenceManager } from '../utils/PreferenceManager';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
@@ -16,6 +16,8 @@ class SettingsConfigImpl {
   // 当前配置（缓存在内存中，避免频繁读取 Preferences）
   private currentVendorId: MusicContentCenterVendorId = MusicContentCenterVendorId.DEFAULT;
   private currentLyricsType: Constants.LyricSourceType = Constants.LyricSourceType.XML;
+  // 打分等级配置 (1-5)
+  private scoreLevel: number = ScoreLevel.LEVEL_5;
   // LyricsView 配置
   private lyricsViewConfig: LyricsViewConfig = new LyricsViewConfig();
   // ScoringView 配置
@@ -55,6 +57,10 @@ class SettingsConfigImpl {
       // 从 PreferenceManager 加载歌词类型
       const lyricsValue = await preferenceManager.getLyricsType();
       this.currentLyricsType = lyricsValue;
+
+      // 加载打分等级配置
+      const scoreLevelValue = await preferenceManager.getNumber('scoreLevel', ScoreLevel.LEVEL_5);
+      this.scoreLevel = scoreLevelValue;
 
       // 加载 LyricsView 配置
       await this.loadLyricsViewConfig();
@@ -318,6 +324,32 @@ class SettingsConfigImpl {
       ExampleLogUtils.logDebug(this.TAG, 'ScoringView config reset to defaults');
     } catch (error) {
       ExampleLogUtils.logError(this.TAG, `Failed to reset ScoringView config: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * 获取打分等级
+   */
+  getScoreLevel(): number {
+    return this.scoreLevel;
+  }
+
+  /**
+   * 设置打分等级
+   */
+  async setScoreLevel(level: number): Promise<void> {
+    try {
+      // 验证等级范围
+      if (level < 1 || level > 5) {
+        ExampleLogUtils.logWarn(this.TAG, `Invalid score level: ${level}, must be 1-5`);
+        return;
+      }
+
+      this.scoreLevel = level;
+      await preferenceManager.putNumber('scoreLevel', level);
+      ExampleLogUtils.logDebug(this.TAG, `Score level updated to: ${level}`);
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to set score level: ${JSON.stringify(error)}`);
     }
   }
 }

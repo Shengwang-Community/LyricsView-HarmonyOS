@@ -12,6 +12,7 @@ import { KeyCenter, TokenCallback, TokenResponse, YSDTokenCallback, YSDTokenResp
 import { PermissionUtil } from '../utils/PermissionUtil';
 import { preferenceManager } from '../utils/PreferenceManager';
 import { BaseViewModel } from './BaseViewModel';
+import { SettingsConfig } from '../models/SettingsConfig';
 
 import { IKaraokeEvent, KaraokeView, LyricModel, LyricsLineModel } from '@shengwang/lyrics-view';
 
@@ -112,6 +113,11 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
 
       // 更新 MusicManager 的 Vendor
       this.musicManager.updateMusicVendor(this.currentVendorId, false);
+
+      // 加载并应用打分等级配置
+      const scoreLevel = SettingsConfig.getScoreLevel();
+      this.musicManager.setScoreLevel(scoreLevel);
+      ExampleLogUtils.logDebug(this.TAG, `Score level applied: ${scoreLevel}`);
 
       // 更新歌曲信息
       this.updateCurrentSongInfo();
@@ -248,7 +254,13 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
               this.rtmToken,
               this.userId,
               this.ysdAppId, this.ysdAppKey, this.ysdUserId, this.ysdToken, this)
-              .then(() => resolve())
+              .then(() => {
+                // 初始化完成后，设置打分等级
+                const scoreLevel = SettingsConfig.getScoreLevel();
+                this.musicManager.setScoreLevel(scoreLevel);
+                ExampleLogUtils.logDebug(this.TAG, `Initial score level set to: ${scoreLevel}`);
+                resolve();
+              })
               .catch((error: Error) => reject(error));
           }
         }
