@@ -513,14 +513,14 @@ export class RtcMccManager {
       const isPreloaded: number = this.musicCenter.isPreloaded(internalSongCode);
       ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload state:${isPreloaded}`);
 
-      if (isPreloaded == 0) {
-        ExampleLogUtils.logDebug(RtcMccManager.TAG,
-          `preloadMusic songCode:${songCode}  preloaded getLyric  request with lyricType:${lyricType}`);
-        this.musicCenter.getLyric(internalSongCode, lyricType);
-      } else {
-        const requestId: string = this.musicCenter.preload(internalSongCode);
-        ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload requestId:${requestId}`);
-      }
+      // if (isPreloaded == 0) {
+      //   ExampleLogUtils.logDebug(RtcMccManager.TAG,
+      //     `preloadMusic songCode:${songCode}  preloaded getLyric  request with lyricType:${lyricType}`);
+      //   this.musicCenter.getLyric(internalSongCode, lyricType);
+      // } else {
+      const requestId: string = this.musicCenter.preload(internalSongCode);
+      ExampleLogUtils.logDebug(RtcMccManager.TAG, `preload requestId:${requestId}`);
+      // }
     } catch (error) {
       console.error(`${RtcMccManager.TAG} preloadMusic error:`, JSON.stringify(error));
     }

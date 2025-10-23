@@ -1,6 +1,7 @@
 import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
 import { SettingsDialog } from '../components/SettingsDialog';
 import { SettingsConfig } from '../models/SettingsConfig';
+import { LyricsViewConfig } from '../models/LyricsViewConfig';
 import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 
 /**
@@ -18,12 +19,15 @@ import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 @ComponentV2
 struct MccIndex {
   @Local private viewModel: MccKaraokeViewModel = new MccKaraokeViewModel();
+  @Local private lyricsConfig: LyricsViewConfig = new LyricsViewConfig();
   // 设置对话框控制器
   private settingsDialogController: CustomDialogController = new CustomDialogController({
     builder: SettingsDialog({
       onConfirm: () => {
         // 设置确定后，重新加载并应用配置
         this.viewModel.reloadAndApplySettings();
+        // 重新加载歌词视图配置
+        this.loadLyricsViewConfig();
       },
       onClearCache: () => {
         // 清空缓存
@@ -39,8 +43,18 @@ struct MccIndex {
     // 初始化设置配置
     SettingsConfig.initialize();
 
+    // 加载歌词视图配置
+    this.loadLyricsViewConfig();
+
     // 初始化 ViewModel
     this.viewModel.initialize();
+  }
+
+  /**
+   * 加载歌词视图配置
+   */
+  private loadLyricsViewConfig(): void {
+    this.lyricsConfig = SettingsConfig.getLyricsViewConfig();
   }
 
   aboutToDisappear() {
@@ -92,24 +106,26 @@ struct MccIndex {
   @Builder
   LyricsViewBuilder() {
     LyricsView({
-      textSize: 16,
-      currentLineTextSize: 20,
-      currentLineTextColor: '#FFFF00',
-      currentLineHighlightedTextColor: '#FFF44336',
-      previousLineTextColor: '#FFFFFF',
-      upcomingLineTextColor: '#FFFFFF',
-      lineSpacing: 15,
-      paddingTop: 15,
-      labelWhenNoLyrics: '暂无歌词',
-      enableLineWrap: false,
-      enableDragging: true,
-      enablePreviousLines: true,
-      enableUpcomingLines: true,
-      enablePreludeEndPositionIndicator: true,
-      preludeEndPositionIndicatorPaddingTop: 5,
-      preludeEndPositionIndicatorRadius: 4,
-      preludeEndPositionIndicatorColor: '#FF6B35',
-      textGravity: 0
+      viewBackgroundColor: this.lyricsConfig.viewBackgroundColor,
+      textSize: this.lyricsConfig.textSize,
+      currentLineTextSize: this.lyricsConfig.currentLineTextSize,
+      currentLineTextColor: this.lyricsConfig.currentLineTextColor,
+      currentLineHighlightedTextColor: this.lyricsConfig.currentLineHighlightedTextColor,
+      previousLineTextColor: this.lyricsConfig.previousLineTextColor,
+      upcomingLineTextColor: this.lyricsConfig.upcomingLineTextColor,
+      lineSpacing: this.lyricsConfig.lineSpacing,
+      paddingTop: this.lyricsConfig.paddingTop,
+      labelWhenNoLyrics: this.lyricsConfig.labelWhenNoLyrics,
+      enableLineWrap: this.lyricsConfig.enableLineWrap,
+      enableDragging: this.lyricsConfig.enableDragging,
+      enableOpacityEffect: this.lyricsConfig.enableOpacityEffect,
+      enablePreviousLines: this.lyricsConfig.enablePreviousLines,
+      enableUpcomingLines: this.lyricsConfig.enableUpcomingLines,
+      enablePreludeEndPositionIndicator: this.lyricsConfig.enablePreludeEndPositionIndicator,
+      preludeEndPositionIndicatorPaddingTop: this.lyricsConfig.preludeEndPositionIndicatorPaddingTop,
+      preludeEndPositionIndicatorRadius: this.lyricsConfig.preludeEndPositionIndicatorRadius,
+      preludeEndPositionIndicatorColor: this.lyricsConfig.preludeEndPositionIndicatorColor,
+      textGravity: this.lyricsConfig.textGravity
     })
       .width('100%')
       .height('100%')

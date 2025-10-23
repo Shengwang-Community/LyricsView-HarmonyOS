@@ -2,6 +2,7 @@ import { Constants, MusicContentCenterVendorId } from '@shengwang/rtc-full';
 import { ExampleConstants } from '../utils/ExampleConstants';
 import { preferenceManager } from '../utils/PreferenceManager';
 import { ExampleLogUtils } from '../utils/ExmapleLogUtils';
+import { LyricsViewConfig } from './LyricsViewConfig';
 
 /**
  * 设置配置类
@@ -14,6 +15,8 @@ class SettingsConfigImpl {
   // 当前配置（缓存在内存中，避免频繁读取 Preferences）
   private currentVendorId: MusicContentCenterVendorId = MusicContentCenterVendorId.DEFAULT;
   private currentLyricsType: Constants.LyricSourceType = Constants.LyricSourceType.XML;
+  // LyricsView 配置
+  private lyricsViewConfig: LyricsViewConfig = new LyricsViewConfig();
 
   /**
    * 初始化设置配置
@@ -50,10 +53,41 @@ class SettingsConfigImpl {
       const lyricsValue = await preferenceManager.getLyricsType();
       this.currentLyricsType = lyricsValue;
 
+      // 加载 LyricsView 配置
+      await this.loadLyricsViewConfig();
+
       // 验证配置的合法性
       this.validateLyricsType();
     } catch (error) {
       ExampleLogUtils.logError(SettingsConfig.TAG, `Failed to load settings: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * 加载 LyricsView 配置
+   */
+  private async loadLyricsViewConfig(): Promise<void> {
+    try {
+      const configStr: string = await preferenceManager.getString('lyricsViewConfig', '{}');
+      const configJson: ESObject = JSON.parse(configStr) as ESObject;
+      this.lyricsViewConfig = LyricsViewConfig.fromJson(configJson);
+      ExampleLogUtils.logDebug(this.TAG, 'LyricsView config loaded successfully');
+    } catch (error) {
+      ExampleLogUtils.logWarn(this.TAG, `Failed to load LyricsView config, using defaults: ${JSON.stringify(error)}`);
+      this.lyricsViewConfig = new LyricsViewConfig();
+    }
+  }
+
+  /**
+   * 保存 LyricsView 配置
+   */
+  private async saveLyricsViewConfig(): Promise<void> {
+    try {
+      const configStr: string = JSON.stringify(this.lyricsViewConfig.toJson());
+      await preferenceManager.putString('lyricsViewConfig', configStr);
+      ExampleLogUtils.logDebug(this.TAG, 'LyricsView config saved successfully');
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to save LyricsView config: ${JSON.stringify(error)}`);
     }
   }
 
@@ -184,6 +218,39 @@ class SettingsConfigImpl {
         return 'KRC';
       default:
         return 'UNKNOWN';
+    }
+  }
+
+  /**
+   * 获取 LyricsView 配置
+   */
+  getLyricsViewConfig(): LyricsViewConfig {
+    return this.lyricsViewConfig.copy();
+  }
+
+  /**
+   * 更新 LyricsView 配置
+   */
+  async updateLyricsViewConfig(config: LyricsViewConfig): Promise<void> {
+    try {
+      this.lyricsViewConfig = config.copy();
+      await this.saveLyricsViewConfig();
+      ExampleLogUtils.logDebug(this.TAG, 'LyricsView config updated successfully');
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to update LyricsView config: ${JSON.stringify(error)}`);
+    }
+  }
+
+  /**
+   * 重置 LyricsView 配置为默认值
+   */
+  async resetLyricsViewConfig(): Promise<void> {
+    try {
+      this.lyricsViewConfig = new LyricsViewConfig();
+      await this.saveLyricsViewConfig();
+      ExampleLogUtils.logDebug(this.TAG, 'LyricsView config reset to defaults');
+    } catch (error) {
+      ExampleLogUtils.logError(this.TAG, `Failed to reset LyricsView config: ${JSON.stringify(error)}`);
     }
   }
 }

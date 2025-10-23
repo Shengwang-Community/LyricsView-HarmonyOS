@@ -81,7 +81,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
         this.currentVendorId = vendorId as MusicContentCenterVendorId;
 
         const lyricType = await preferenceManager.getLyricsType();
-        
+
         this.musicManager.setLyricType(lyricType)
 
         this.songInfo.vendorName = this.getVendorName();
@@ -111,7 +111,7 @@ export class MccKaraokeViewModel extends BaseViewModel implements IMccCallback {
       await this.loadVendorFromPreference();
 
       // 更新 MusicManager 的 Vendor
-      this.musicManager.updateMusicVendor(this.currentVendorId);
+      this.musicManager.updateMusicVendor(this.currentVendorId, false);
 
       // 更新歌曲信息
       this.updateCurrentSongInfo();

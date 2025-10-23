@@ -91,7 +91,7 @@ export class MusicManager implements IMccCallback {
    * Update music service type
    * @param serviceType - Service type
    */
-  updateMusicVendor(vendorId: MusicContentCenterVendorId): void {
+  updateMusicVendor(vendorId: MusicContentCenterVendorId, enablePlay: boolean = true): void {
     ExampleLogUtils.logDebug(MusicManager.TAG, `updateMusicVendor:${vendorId}`);
 
     this.currentSongIndex = 0;
@@ -105,6 +105,10 @@ export class MusicManager implements IMccCallback {
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor2MusicList();
         break;
+    }
+    if (!enablePlay) {
+      this.status = PlaybackStatus.IDLE;
+      return;
     }
     this.playMusic();
   }

@@ -29,17 +29,17 @@ export struct LyricsView {
   /** Text size for current line */
   @Prop currentLineTextSize: number = 20;
   /** Text color for current line's normal text */
-  @Prop currentLineTextColor: string = '#FFFFFF';
+  @Prop currentLineTextColor: string = '#FFFF00';
   /** Text color for current line's highlighted portion */
-  @Prop currentLineHighlightedTextColor: string = '#FF6B35';
+  @Prop currentLineHighlightedTextColor: string = '#FFF44336';
   /** Text color for previous lyrics lines */
-  @Prop previousLineTextColor: string = '#999999';
+  @Prop previousLineTextColor: string = '#FFFFFF';
   /** Text color for upcoming lyrics lines */
-  @Prop upcomingLineTextColor: string = '#999999';
+  @Prop upcomingLineTextColor: string = '#FFFFFF';
   /** Vertical spacing between lyrics lines */
-  @Prop lineSpacing: number = 12;
+  @Prop lineSpacing: number = 15;
   /** Top padding for the entire lyrics view */
-  @Prop paddingTop: number = 5;
+  @Prop paddingTop: number = 15;
   /** Text to display when no lyrics are available */
   @Prop labelWhenNoLyrics: string = '暂无歌词';
   /** Whether to enable automatic line wrapping for long lyrics */
@@ -55,7 +55,7 @@ export struct LyricsView {
   /** Whether to show the prelude end position indicator */
   @Prop enablePreludeEndPositionIndicator: boolean = true;
   /** Top padding for the prelude end position indicator */
-  @Prop preludeEndPositionIndicatorPaddingTop: number = 3;
+  @Prop preludeEndPositionIndicatorPaddingTop: number = 5;
   /** Radius of the prelude end position indicator dots */
   @Prop preludeEndPositionIndicatorRadius: number = 4;
   /** Color of the prelude end position indicator */
