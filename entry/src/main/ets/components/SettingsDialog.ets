@@ -1,5 +1,6 @@
 import { Constants, SettingsConfig, VendorType } from '../models/SettingsConfig';
 import { LyricsViewConfig } from '../models/LyricsViewConfig';
+import { ScoringViewConfig } from '../models/ScoringViewConfig';
 import { promptAction } from '@kit.ArkUI';
 
 /**
@@ -15,7 +16,9 @@ export struct SettingsDialog {
   @State private availableLyricsTypes: Constants.LyricSourceType[] = [];
   // LyricsView 配置
   @State private lyricsConfig: LyricsViewConfig = new LyricsViewConfig();
-  @State private currentTabIndex: number = 0; // 0: Karaoke设置, 1: 歌词视图设置
+  // ScoringView 配置
+  @State private scoringConfig: ScoringViewConfig = new ScoringViewConfig();
+  @State private currentTabIndex: number = 0; // 0: Karaoke设置, 1: 歌词视图设置, 2: 打分视图设置
   private scroller: Scroller = new Scroller();
 
   aboutToAppear() {
@@ -26,6 +29,9 @@ export struct SettingsDialog {
 
     // 加载 LyricsView 配置
     this.lyricsConfig = SettingsConfig.getLyricsViewConfig();
+
+    // 加载 ScoringView 配置
+    this.scoringConfig = SettingsConfig.getScoringViewConfig();
   }
 
   /**
@@ -91,6 +97,9 @@ export struct SettingsDialog {
     // 保存 LyricsView 配置
     await SettingsConfig.updateLyricsViewConfig(this.lyricsConfig);
 
+    // 保存 ScoringView 配置
+    await SettingsConfig.updateScoringViewConfig(this.scoringConfig);
+
     // 调用回调通知外部配置已更改
     if (this.onConfirm) {
       this.onConfirm();
@@ -110,6 +119,26 @@ export struct SettingsDialog {
 
       promptAction.showToast({
         message: '歌词视图配置已重置',
+        duration: 2000
+      });
+    } catch (error) {
+      promptAction.showToast({
+        message: '重置配置失败',
+        duration: 2000
+      });
+    }
+  }
+
+  /**
+   * 重置 ScoringView 配置
+   */
+  private async resetScoringViewConfig(): Promise<void> {
+    try {
+      await SettingsConfig.resetScoringViewConfig();
+      this.scoringConfig = SettingsConfig.getScoringViewConfig();
+
+      promptAction.showToast({
+        message: '打分视图配置已重置',
         duration: 2000
       });
     } catch (error) {
@@ -175,7 +204,7 @@ export struct SettingsDialog {
   }
 
   @Builder
-  NumberInputItem(label: string, value: number, onChange: (value: number) => void) {
+  NumberInputItem(label: string, value: number, onChange: (value: number) => void, isDecimal: boolean = false) {
     Column() {
       Row() {
         Text(label)
@@ -183,11 +212,13 @@ export struct SettingsDialog {
           .fontColor('#666666')
           .layoutWeight(1)
 
-        TextInput({ text: value.toString() })
+        TextInput({
+          text: isDecimal ? value.toFixed(2) : value.toString()
+        })
           .width(80)
           .height(32)
           .fontSize(12)
-          .type(InputType.Number)
+          .type(isDecimal ? InputType.NUMBER_DECIMAL : InputType.Number)
           .onChange((value: string) => {
             const num = parseFloat(value);
             if (!isNaN(num)) {
@@ -533,6 +564,138 @@ export struct SettingsDialog {
     .scrollBar(BarState.Auto)
   }
 
+  @Builder
+  ScoringViewSettingsPanel() {
+    Scroll(this.scroller) {
+      Column({ space: 16 }) {
+        // 标题
+        this.SettingItemTitle('打分视图配置')
+
+        // ===== 颜色配置部分 =====
+        Column({ space: 12 }) {
+          // 视图背景颜色
+          this.ColorPickerItem('视图背景颜色', () => this.scoringConfig.viewBackgroundColor,
+            ['#ffffbb33', '#ffff6b6b', '#ff4ecdc4'], ['默认黄', '红色', '青色'],
+            (color: string) => {
+              this.scoringConfig.viewBackgroundColor = color;
+            })
+
+          // 导航线颜色
+          this.ColorPickerItem('导航线颜色', () => this.scoringConfig.leadingLinesColor,
+            ['#4DFFFFFF', '#4D00FF00', '#4DFF0000'], ['默认白', '绿色', '红色'],
+            (color: string) => {
+              this.scoringConfig.leadingLinesColor = color;
+            })
+
+          // 音高指示器颜色
+          this.ColorPickerItem('音高指示器颜色', () => this.scoringConfig.pitchIndicatorColor,
+            ['#F0F0F0F0', '#F0FFD700', '#F0FF1493'], ['默认白', '金色', '粉色'],
+            (color: string) => {
+              this.scoringConfig.pitchIndicatorColor = color;
+            })
+
+          // 本地音高指示器颜色
+          this.ColorPickerItem('本地音高指示器颜色', () => this.scoringConfig.localPitchIndicatorColor,
+            ['#F0F0F0F0', '#F00000FF', '#F0FF6347'], ['默认白', '蓝色', '番茄色'],
+            (color: string) => {
+              this.scoringConfig.localPitchIndicatorColor = color;
+            })
+
+          // 参考音高条默认颜色
+          this.ColorPickerItem('参考音高条默认颜色', () => this.scoringConfig.refPitchStickDefaultColor,
+            ['#99FFFFFF', '#99CCCCCC', '#9900FFFF'], ['默认白', '灰色', '青色'],
+            (color: string) => {
+              this.scoringConfig.refPitchStickDefaultColor = color;
+            })
+
+          // 高亮音高条颜色
+          this.ColorPickerItem('高亮音高条颜色', () => this.scoringConfig.highlightedPitchStickColor,
+            ['#FFF44336', '#FF4CAF50', '#FFFFEB3B'], ['默认红', '绿色', '黄色'],
+            (color: string) => {
+              this.scoringConfig.highlightedPitchStickColor = color;
+            })
+        }
+
+        // ===== 尺寸配置部分 =====
+        Column({ space: 12 }) {
+          this.SettingItemTitle('尺寸配置')
+
+          // 导航线高度
+          this.NumberInputItem('导航线高度', this.scoringConfig.leadingLinesHeight, (value: number) => {
+            this.scoringConfig.leadingLinesHeight = value;
+          })
+
+          // 音高指示器宽度
+          this.NumberInputItem('音高指示器宽度', this.scoringConfig.pitchIndicatorWidth, (value: number) => {
+            this.scoringConfig.pitchIndicatorWidth = value;
+          })
+
+          // 本地音高指示器半径
+          this.NumberInputItem('本地音高指示器半径', this.scoringConfig.localPitchIndicatorRadius, (value: number) => {
+            this.scoringConfig.localPitchIndicatorRadius = value;
+          })
+
+          // 音高条高度
+          this.NumberInputItem('音高条高度', this.scoringConfig.pitchStickHeight, (value: number) => {
+            this.scoringConfig.pitchStickHeight = value;
+          })
+
+          // 音高条圆角半径
+          this.NumberInputItem('音高条圆角半径', this.scoringConfig.pitchStickRadius, (value: number) => {
+            this.scoringConfig.pitchStickRadius = value;
+          })
+        }
+
+        // ===== 行为配置部分 =====
+        Column({ space: 12 }) {
+          this.SettingItemTitle('行为配置')
+
+          // 初始分数
+          this.NumberInputItem('初始分数', this.scoringConfig.initialScore, (value: number) => {
+            this.scoringConfig.initialScore = value;
+          })
+
+          // 每毫秒移动像素数
+          this.NumberInputItem('每毫秒移动像素数', this.scoringConfig.movingPixelsPerMs, (value: number) => {
+            this.scoringConfig.movingPixelsPerMs = value;
+          }, true)
+
+          // 命中分数阈值
+          this.NumberInputItem('命中分数阈值 (0-1)', this.scoringConfig.hitScoreThreshold, (value: number) => {
+            this.scoringConfig.hitScoreThreshold = value;
+          }, true)
+
+          // 起点水平偏移比例
+          this.NumberInputItem('起点水平偏移比例 (0-1)', this.scoringConfig.startPointHorizontalBias,
+            (value: number) => {
+              this.scoringConfig.startPointHorizontalBias = value;
+            }, true)
+
+          // 是否启用粒子效果
+          this.SwitchItem('启用粒子效果', this.scoringConfig.enableParticleEffect, (checked: boolean) => {
+            this.scoringConfig.enableParticleEffect = checked;
+          })
+        }
+
+        // 重置按钮
+        Button('重置为默认值')
+          .type(ButtonType.Normal)
+          .fontSize(14)
+          .width('100%')
+          .backgroundColor('#FF5722')
+          .fontColor('#FFFFFF')
+          .margin({ top: 8 })
+          .onClick(() => {
+            this.resetScoringViewConfig();
+          })
+      }
+      .width('100%')
+    }
+    .width('100%')
+    .height('100%')
+    .scrollBar(BarState.Auto)
+  }
+
   build() {
     Column() {
       // 标题
@@ -547,7 +710,7 @@ export struct SettingsDialog {
 
       // 标签页切换
       Row({ space: 8 }) {
-        Button('Karaoke 设置')
+        Button('基础设置')
           .type(ButtonType.Normal)
           .fontSize(14)
           .height(36)
@@ -558,7 +721,7 @@ export struct SettingsDialog {
             this.currentTabIndex = 0;
           })
 
-        Button('歌词视图设置')
+        Button('歌词设置')
           .type(ButtonType.Normal)
           .fontSize(14)
           .height(36)
@@ -568,6 +731,17 @@ export struct SettingsDialog {
           .onClick(() => {
             this.currentTabIndex = 1;
           })
+
+        Button('打分设置')
+          .type(ButtonType.Normal)
+          .fontSize(14)
+          .height(36)
+          .layoutWeight(1)
+          .backgroundColor(this.currentTabIndex === 2 ? '#2196F3' : '#E0E0E0')
+          .fontColor(this.currentTabIndex === 2 ? '#FFFFFF' : '#666666')
+          .onClick(() => {
+            this.currentTabIndex = 2;
+          })
       }
       .width('100%')
       .margin({ bottom: 16 })
@@ -576,8 +750,10 @@ export struct SettingsDialog {
       Column() {
         if (this.currentTabIndex === 0) {
           this.KaraokeSettingsPanel()
-        } else {
+        } else if (this.currentTabIndex === 1) {
           this.LyricsViewSettingsPanel()
+        } else {
+          this.ScoringViewSettingsPanel()
         }
       }
       .width('100%')

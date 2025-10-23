@@ -2,6 +2,7 @@ import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
 import { SettingsDialog } from '../components/SettingsDialog';
 import { SettingsConfig } from '../models/SettingsConfig';
 import { LyricsViewConfig } from '../models/LyricsViewConfig';
+import { ScoringViewConfig } from '../models/ScoringViewConfig';
 import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 
 /**
@@ -20,6 +21,7 @@ import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 struct MccIndex {
   @Local private viewModel: MccKaraokeViewModel = new MccKaraokeViewModel();
   @Local private lyricsConfig: LyricsViewConfig = new LyricsViewConfig();
+  @Local private scoringConfig: ScoringViewConfig = new ScoringViewConfig();
   // 设置对话框控制器
   private settingsDialogController: CustomDialogController = new CustomDialogController({
     builder: SettingsDialog({
@@ -28,6 +30,8 @@ struct MccIndex {
         this.viewModel.reloadAndApplySettings();
         // 重新加载歌词视图配置
         this.loadLyricsViewConfig();
+        // 重新加载打分视图配置
+        this.loadScoringViewConfig();
       },
       onClearCache: () => {
         // 清空缓存
@@ -46,6 +50,9 @@ struct MccIndex {
     // 加载歌词视图配置
     this.loadLyricsViewConfig();
 
+    // 加载打分视图配置
+    this.loadScoringViewConfig();
+
     // 初始化 ViewModel
     this.viewModel.initialize();
   }
@@ -55,6 +62,13 @@ struct MccIndex {
    */
   private loadLyricsViewConfig(): void {
     this.lyricsConfig = SettingsConfig.getLyricsViewConfig();
+  }
+
+  /**
+   * 加载打分视图配置
+   */
+  private loadScoringViewConfig(): void {
+    this.scoringConfig = SettingsConfig.getScoringViewConfig();
   }
 
   aboutToDisappear() {
@@ -97,7 +111,22 @@ struct MccIndex {
   @Builder
   ScoringViewBuilder() {
     ScoringView({
-      enableParticleEffect: true
+      viewBackgroundColor: this.scoringConfig.viewBackgroundColor,
+      leadingLinesColor: this.scoringConfig.leadingLinesColor,
+      leadingLinesHeight: this.scoringConfig.leadingLinesHeight,
+      pitchIndicatorColor: this.scoringConfig.pitchIndicatorColor,
+      pitchIndicatorWidth: this.scoringConfig.pitchIndicatorWidth,
+      localPitchIndicatorColor: this.scoringConfig.localPitchIndicatorColor,
+      localPitchIndicatorRadius: this.scoringConfig.localPitchIndicatorRadius,
+      pitchStickHeight: this.scoringConfig.pitchStickHeight,
+      pitchStickRadius: this.scoringConfig.pitchStickRadius,
+      refPitchStickDefaultColor: this.scoringConfig.refPitchStickDefaultColor,
+      highlightedPitchStickColor: this.scoringConfig.highlightedPitchStickColor,
+      initialScore: this.scoringConfig.initialScore,
+      movingPixelsPerMs: this.scoringConfig.movingPixelsPerMs,
+      hitScoreThreshold: this.scoringConfig.hitScoreThreshold,
+      startPointHorizontalBias: this.scoringConfig.startPointHorizontalBias,
+      enableParticleEffect: this.scoringConfig.enableParticleEffect
     })
       .width('100%')
       .height('100%')
