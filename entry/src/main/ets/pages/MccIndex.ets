@@ -39,9 +39,9 @@ struct MccIndex {
     customStyle: true
   });
 
-  aboutToAppear() {
+  async aboutToAppear() {
     // 初始化设置配置
-    SettingsConfig.initialize();
+    await SettingsConfig.initialize();
 
     // 加载歌词视图配置
     this.loadLyricsViewConfig();

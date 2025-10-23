@@ -266,11 +266,11 @@ export struct LyricsView {
       Text(this.labelWhenNoLyrics)
         .fontSize(this.currentLineTextSize)
         .fontColor(this.currentLineHighlightedTextColor)
-        .textAlign(this.getTextAlign())
+        .textAlign(TextAlign.Center)
     }
     .width('100%')
     .height('100%')
-    .justifyContent(this.getRowJustifyContent())
+    .justifyContent(FlexAlign.Center)
   }
 
   /**
@@ -322,6 +322,35 @@ export struct LyricsView {
         return Alignment.End; // right
       default:
         return Alignment.Center; // center
+    }
+  }
+
+  /**
+   * Gets HorizontalAlign based on textGravity
+   */
+  private getHorizontalAlign(): HorizontalAlign {
+    switch (this.textGravity) {
+      case 1:
+        return HorizontalAlign.Start; // left
+      case 2:
+        return HorizontalAlign.End; // right
+      default:
+        return HorizontalAlign.Center; // center
+    }
+  }
+
+  /**
+   * Gets scroll container position X offset based on textGravity
+   * To ensure alignment with other lines
+   */
+  private getScrollPositionX(): number {
+    switch (this.textGravity) {
+      case 1:
+        return this.linePaddingLeftRight * 2; // left
+      case 2:
+        return 0; // right
+      default:
+        return this.linePaddingLeftRight; // center
     }
   }
 
@@ -1143,7 +1172,7 @@ export struct LyricsView {
             }, (displayLine: DisplayLine, displayIndex: number) => `${index}_bg_${displayIndex}`)
         }
         .width('100%')
-        .alignItems(HorizontalAlign.Center)
+        .alignItems(this.getHorizontalAlign())
 
         // Highlight text (progressive display line by line)
         Column() {
@@ -1176,7 +1205,7 @@ export struct LyricsView {
             }, (displayLine: DisplayLine, displayIndex: number) => `${index}_fg_${displayIndex}`)
         }
         .width('100%')
-        .alignItems(HorizontalAlign.Center)
+        .alignItems(this.getHorizontalAlign())
       }
       .width(this.actualViewWidth)
       .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
@@ -1204,20 +1233,24 @@ export struct LyricsView {
     if (this.isLrcType()) {
       // LRC format: entire line highlight, no character-by-character coloring
       Scroll(this.textScroller) {
-        Text(this.getLineText(line))
-          .fontSize(this.currentLineTextSize)
-          .fontColor(this.currentLineHighlightedTextColor) // Directly use highlight color
-          .fontWeight(FontWeight.Bold)
-          .textAlign(this.getTextAlign())
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.None })
-          .width('auto')
+        Stack() {
+          Text(this.getLineText(line))
+            .fontSize(this.currentLineTextSize)
+            .fontColor(this.currentLineHighlightedTextColor) // Directly use highlight color
+            .fontWeight(FontWeight.Bold)
+            .textAlign(this.getTextAlign())
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.None })
+            .width('auto')
+        }
+        .width('100%')
+        .alignContent(this.getAlignment())
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width(this.actualViewWidth)
       .height(this.getLineHeight())
-      .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
+      .position({ x: this.getScrollPositionX(), y: this.calculateLineYPosition(index) })
       .opacity(this.getLineOpacity(index))
       .scale({
         x: this.getLineScale(index),
@@ -1267,13 +1300,14 @@ export struct LyricsView {
               playMode: PlayMode.Normal
             })
         }
+        .width('100%')
         .alignContent(this.getAlignment())
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width(this.actualViewWidth)
       .height(this.getLineHeight())
-      .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
+      .position({ x: this.getScrollPositionX(), y: this.calculateLineYPosition(index) })
       .opacity(this.getLineOpacity(index))
       .scale({
         x: this.getLineScale(index),
@@ -1340,6 +1374,7 @@ export struct LyricsView {
             .textOverflow({ overflow: TextOverflow.None }) // No ellipsis
             .width('auto') // Let text natural width
         }
+        .width('100%')
         .alignContent(this.getAlignment())
       }
       .scrollable(ScrollDirection.Horizontal) // Horizontal scroll
@@ -1347,7 +1382,7 @@ export struct LyricsView {
       .width(this.actualViewWidth)
       .height(this.getLineHeight())
       .position({
-        x: this.linePaddingLeftRight,
+        x: this.getScrollPositionX(),
         y: this.getTransitioningYPosition() // Use animation interpolation position
       })
       .opacity(this.getLineOpacity(index))
@@ -1489,27 +1524,31 @@ export struct LyricsView {
       if (this.isLrcType()) {
         // LRC format: no wrap mode, directly display highlight color
         Scroll(this.textScroller) {
-          Text(this.getLineText(line))
-            .fontSize(this.getTransitioningFontSize())
-            .fontColor(this.currentLineHighlightedTextColor) // Directly use highlight color
-            .fontWeight(this.getTransitioningFontWeight())
-            .textAlign(this.getTextAlign())
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.None })
-            .width('auto')
-            .animation({
-              duration: 300,
-              curve: Curve.EaseInOut,
-              iterations: 1,
-              playMode: PlayMode.Normal
-            })
+          Stack() {
+            Text(this.getLineText(line))
+              .fontSize(this.getTransitioningFontSize())
+              .fontColor(this.currentLineHighlightedTextColor) // Directly use highlight color
+              .fontWeight(this.getTransitioningFontWeight())
+              .textAlign(this.getTextAlign())
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.None })
+              .width('auto')
+              .animation({
+                duration: 300,
+                curve: Curve.EaseInOut,
+                iterations: 1,
+                playMode: PlayMode.Normal
+              })
+          }
+          .width('100%')
+          .alignContent(this.getAlignment())
         }
         .scrollable(ScrollDirection.Horizontal)
         .scrollBar(BarState.Off)
         .width(this.actualViewWidth)
         .height(this.getLineHeight())
         .position({
-          x: this.linePaddingLeftRight,
+          x: this.getScrollPositionX(),
           y: this.getNewCurrentYPosition()
         })
         .opacity(this.getLineOpacity(index))
@@ -1566,6 +1605,7 @@ export struct LyricsView {
                 playMode: PlayMode.Normal
               })
           }
+          .width('100%')
           .alignContent(this.getAlignment())
         }
         .scrollable(ScrollDirection.Horizontal)
@@ -1573,7 +1613,7 @@ export struct LyricsView {
         .width(this.actualViewWidth)
         .height(this.getLineHeight())
         .position({
-          x: this.linePaddingLeftRight,
+          x: this.getScrollPositionX(),
           y: this.getNewCurrentYPosition()
         })
         .opacity(this.getLineOpacity(index))
