@@ -20,6 +20,8 @@ export struct SettingsDialog {
   // ScoringView 配置
   @State private scoringConfig: ScoringViewConfig = new ScoringViewConfig();
   @State private currentTabIndex: number = 0; // 0: Karaoke设置, 1: 歌词视图设置, 2: 打分视图设置
+  // 用于强制刷新 UI 的时间戳
+  @State private refreshTimestamp: number = 0;
   private scroller: Scroller = new Scroller();
 
   aboutToAppear() {
@@ -127,7 +129,12 @@ export struct SettingsDialog {
   private async resetLyricsViewConfig(): Promise<void> {
     try {
       await SettingsConfig.resetLyricsViewConfig();
-      this.lyricsConfig = SettingsConfig.getLyricsViewConfig();
+      // 重新加载配置并强制触发 UI 更新
+      const newConfig = SettingsConfig.getLyricsViewConfig();
+      // 创建新对象以触发 @State 更新
+      this.lyricsConfig = newConfig.copy();
+      // 更新时间戳以强制刷新 UI 组件
+      this.refreshTimestamp = Date.now();
 
       promptAction.showToast({
         message: '歌词视图配置已重置',
@@ -147,7 +154,12 @@ export struct SettingsDialog {
   private async resetScoringViewConfig(): Promise<void> {
     try {
       await SettingsConfig.resetScoringViewConfig();
-      this.scoringConfig = SettingsConfig.getScoringViewConfig();
+      // 重新加载配置并强制触发 UI 更新
+      const newConfig = SettingsConfig.getScoringViewConfig();
+      // 创建新对象以触发 @State 更新
+      this.scoringConfig = newConfig.copy();
+      // 更新时间戳以强制刷新 UI 组件
+      this.refreshTimestamp = Date.now();
 
       promptAction.showToast({
         message: '打分视图配置已重置',
@@ -196,6 +208,7 @@ export struct SettingsDialog {
         Select(colorLabels.map((colorLabel: string, index: number): SelectOption => {
           return { value: colorLabel };
         }))
+          .key(`${label}_${getCurrentColor()}_${this.refreshTimestamp}`)
           .selected(colorOptions.indexOf(getCurrentColor()))
           .value(colorLabels[colorOptions.indexOf(getCurrentColor())])
           .font({ size: 12 })
@@ -227,6 +240,7 @@ export struct SettingsDialog {
         TextInput({
           text: isDecimal ? value.toFixed(2) : value.toString()
         })
+          .key(`${label}_${value}_${this.refreshTimestamp}`)
           .width(80)
           .height(32)
           .fontSize(12)
@@ -255,6 +269,7 @@ export struct SettingsDialog {
           .layoutWeight(1)
 
         Toggle({ type: ToggleType.Switch, isOn: checked })
+          .key(`${label}_${checked}_${this.refreshTimestamp}`)
           .onChange((isOn: boolean) => {
             onChange(isOn);
           })
@@ -278,6 +293,7 @@ export struct SettingsDialog {
       Row({ space: 8 }) {
         ForEach(options, (option: string, index: number) => {
           Button(option)
+            .key(`${label}_${option}_${getSelectedIndex()}_${this.refreshTimestamp}`)
             .type(ButtonType.Normal)
             .fontSize(12)
             .height(32)
@@ -447,6 +463,12 @@ export struct SettingsDialog {
   LyricsViewSettingsPanel() {
     Scroll(this.scroller) {
       Column({ space: 12 }) {
+        // 隐藏的刷新触发器
+        Text(`${this.refreshTimestamp}`)
+          .width(0)
+          .height(0)
+          .opacity(0)
+
         // ========== 颜色配置 ==========
         Column() {
           this.SettingItemTitle('颜色配置')
@@ -607,6 +629,12 @@ export struct SettingsDialog {
   ScoringViewSettingsPanel() {
     Scroll(this.scroller) {
       Column({ space: 16 }) {
+        // 隐藏的刷新触发器
+        Text(`${this.refreshTimestamp}`)
+          .width(0)
+          .height(0)
+          .opacity(0)
+
         // 标题
         this.SettingItemTitle('打分视图配置')
 
