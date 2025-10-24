@@ -72,7 +72,6 @@ export struct LyricsView {
   /** Current timestamp in the lyrics playback */
   @State private mCurrentTime: number = 0;
   @State private mDraggingInProgress: boolean = false;
-  @State private mCurrentLineTranslateX: number = 0;
   // Horizontal scrolling related state
   // Actual component dimensions measured dynamically
   @State private actualViewHeight: number = 400; // Default value, will be overridden by actual measurement
@@ -237,7 +236,6 @@ export struct LyricsView {
    */
   private resetInternal(): void {
     this.mCurrentTime = 0;
-    this.mCurrentLineTranslateX = 0;
     this.mIndexOfCurrentLine = -1;
 
     this.lyricsModel = null;
@@ -326,6 +324,23 @@ export struct LyricsView {
   }
 
   /**
+   * Calculate Stack width for scrollable content
+   * Returns the width that allows both scrolling and alignment to work
+   */
+  private getStackWidthForScrolling(line: LyricsLineModel, fontSize: number): string | number {
+    const text = this.getLineText(line);
+    const textWidth = this.measureTextWidth(text, fontSize);
+    const containerWidth = this.actualViewWidth;
+
+    // If text overflows, Stack should be at least as wide as container to make alignment work
+    // Otherwise, use 100% to fill container
+    if (textWidth > containerWidth) {
+      return Math.max(textWidth, containerWidth);
+    }
+    return '100%';
+  }
+
+  /**
    * Gets HorizontalAlign based on textGravity
    */
   private getHorizontalAlign(): HorizontalAlign {
@@ -336,21 +351,6 @@ export struct LyricsView {
         return HorizontalAlign.End; // right
       default:
         return HorizontalAlign.Center; // center
-    }
-  }
-
-  /**
-   * Gets scroll container position X offset based on textGravity
-   * To ensure alignment with other lines
-   */
-  private getScrollPositionX(): number {
-    switch (this.textGravity) {
-      case 1:
-        return this.linePaddingLeftRight * 2; // left
-      case 2:
-        return 0; // right
-      default:
-        return this.linePaddingLeftRight; // center
     }
   }
 
@@ -742,7 +742,6 @@ export struct LyricsView {
 
   /**
    * Improved text width estimation method
-   * More accurate estimation based on character type, with safety margin
    */
   private measureTextWidth(text: string, fontSize: number): number {
     let estimatedWidth = 0;
@@ -751,18 +750,21 @@ export struct LyricsView {
     for (let i = 0; i < text.length; i++) {
       const char = text.charAt(i);
       if (/[\u4e00-\u9fa5]/.test(char)) {
-        // Chinese character, width approximately equals font size
         estimatedWidth += fontSize;
         isChinese = true;
       } else if (/[a-zA-Z0-9]/.test(char)) {
-        // English letters and numbers, width approximately 0.6 times font size (slightly increased for accuracy)
-        estimatedWidth += fontSize * 0.6;
+        estimatedWidth += fontSize * 0.3;
+        isChinese = false;
       } else {
         // Punctuation and other characters
-        if (isChinese) {
-          estimatedWidth += fontSize * 0.8; // Chinese punctuation
+        if (char == ' ') {
+          estimatedWidth += fontSize * 0.2;
         } else {
-          estimatedWidth += fontSize * 0.4; // English punctuation
+          if (isChinese) {
+            estimatedWidth += fontSize * 0.6; // Chinese punctuation
+          } else {
+            estimatedWidth += fontSize * 1.8; // English punctuation
+          }
         }
       }
     }
@@ -781,16 +783,9 @@ export struct LyricsView {
   private isTextOverflowing(text: string, fontSize: number): boolean {
     const actualTextWidth = this.measureTextWidth(text, fontSize);
     // Consider left and right margins, actual available width needs to subtract margins
-    const availableWidth = this.actualViewWidth - (this.linePaddingLeftRight * 2);
+    const availableWidth = this.actualViewWidth;
     const isOverflowing = actualTextWidth > availableWidth;
 
-    // For testing, lower scroll trigger threshold
-    if (!this.shouldEnableLineWrap()) {
-      // For non-wrap mode, consider scrolling needed if text length exceeds 5 characters (for testing convenience)
-      if (text.length > 5) {
-        return true;
-      }
-    }
 
     return isOverflowing;
   }
@@ -804,7 +799,7 @@ export struct LyricsView {
     const fontSize = this.currentLineTextSize; // Ensure using current line font size
     const actualTextWidth = this.measureTextWidth(text, fontSize); // Use precise measurement
     // Consider left and right margins, actual available width needs to subtract margins
-    const containerWidth = this.actualViewWidth - (this.linePaddingLeftRight * 2);
+    const containerWidth = this.actualViewWidth;
 
     // For testing, allow scrolling even if text is not very long
     if (actualTextWidth <= containerWidth * 0.8) { // Lower threshold, start scrolling at 80%
@@ -885,81 +880,11 @@ export struct LyricsView {
       this.textScrollTimer = -1;
     }
     this.isTextScrolling = false;
-    this.mCurrentLineTranslateX = 0; // Reset horizontal scroll offset
     // Reset scroll position to start
     this.textScroller.scrollTo({
       xOffset: 0,
       yOffset: 0
     });
-  }
-
-  /**
-   * Check if horizontal scrolling should be applied (reference Android version implementation)
-   * Start scrolling when both highlighted part and remaining part are greater than half of view width
-   */
-  private checkIfXTranslationShouldApply(line: LyricsLineModel): void {
-    if (this.shouldEnableLineWrap()) {
-      this.mCurrentLineTranslateX = 0; // No horizontal scrolling needed in wrap mode
-      this.updateScrollPosition(0);
-      return;
-    }
-
-    const text = this.getLineText(line);
-    const fontSize = this.currentLineTextSize;
-    const textWidth = text.length * fontSize * 0.6; // Estimate total text width
-    const viewWidth = this.actualViewWidth;
-    const halfViewWidth = viewWidth / 2;
-
-    // Check if text is overlong
-    if (!this.isLyricsLineOverlong(textWidth)) {
-      this.mCurrentLineTranslateX = 0;
-      this.updateScrollPosition(0);
-      return;
-    }
-
-    // Calculate current highlight area width
-    const progress = this.calculateLineProgress(line);
-    const currentHighlightWidth = textWidth * progress;
-
-    // Android version scroll logic:
-    // 1. Highlighted part greater than half of view width
-    // 2. Remaining part also greater than half of view width
-    if (currentHighlightWidth > halfViewWidth &&
-      (textWidth - currentHighlightWidth) > halfViewWidth) {
-
-      // Calculate target scroll position: keep current play position in screen center
-      const targetScrollX = currentHighlightWidth - halfViewWidth;
-
-      // Limit scroll range
-      const maxScroll = textWidth - viewWidth;
-      this.mCurrentLineTranslateX = Math.max(0, Math.min(maxScroll, targetScrollX));
-
-      // Apply scrolling
-      this.updateScrollPosition(this.mCurrentLineTranslateX);
-
-    } else {
-      this.mCurrentLineTranslateX = 0;
-      this.updateScrollPosition(0);
-    }
-  }
-
-  /**
-   * Update scroll position
-   */
-  private updateScrollPosition(scrollX: number): void {
-    if (this.textScroller) {
-      this.textScroller.scrollTo({
-        xOffset: scrollX,
-        yOffset: 0
-      });
-    }
-  }
-
-  /**
-   * Check if lyrics line is overlong (needs horizontal scrolling)
-   */
-  private isLyricsLineOverlong(textWidth: number): boolean {
-    return textWidth > this.actualViewWidth;
   }
 
   /**
@@ -1136,7 +1061,13 @@ export struct LyricsView {
       }
       .width(this.actualViewWidth)
       .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
-      .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
+      .padding({
+        left: this.linePaddingLeftRight,
+        right: this.linePaddingLeftRight,
+        top: 0,
+        bottom: 0
+      })
+      .position({ x: 0, y: this.calculateLineYPosition(index) })
       .opacity(this.getLineOpacity(index))
       .scale({
         x: this.getLineScale(index),
@@ -1209,7 +1140,13 @@ export struct LyricsView {
       }
       .width(this.actualViewWidth)
       .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
-      .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
+      .padding({
+        left: this.linePaddingLeftRight,
+        right: this.linePaddingLeftRight,
+        top: 0,
+        bottom: 0
+      })
+      .position({ x: 0, y: this.calculateLineYPosition(index) })
       .opacity(this.getLineOpacity(index))
       .scale({
         x: this.getLineScale(index),
@@ -1243,14 +1180,20 @@ export struct LyricsView {
             .textOverflow({ overflow: TextOverflow.None })
             .width('auto')
         }
-        .width('100%')
+        .width(this.getStackWidthForScrolling(line, this.currentLineTextSize))
         .alignContent(this.getAlignment())
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width(this.actualViewWidth)
       .height(this.getLineHeight())
-      .position({ x: this.getScrollPositionX(), y: this.calculateLineYPosition(index) })
+      .padding({
+        left: this.linePaddingLeftRight,
+        right: this.linePaddingLeftRight,
+        top: 0,
+        bottom: 0
+      })
+      .position({ x: 0, y: this.calculateLineYPosition(index) })
       .opacity(this.getLineOpacity(index))
       .scale({
         x: this.getLineScale(index),
@@ -1300,14 +1243,26 @@ export struct LyricsView {
               playMode: PlayMode.Normal
             })
         }
-        .width('100%')
+        .width(this.getStackWidthForScrolling(line, this.currentLineTextSize))
         .alignContent(this.getAlignment())
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width(this.actualViewWidth)
       .height(this.getLineHeight())
-      .position({ x: this.getScrollPositionX(), y: this.calculateLineYPosition(index) })
+      .padding({
+        left: this.linePaddingLeftRight,
+        right: this.linePaddingLeftRight,
+        top: 0,
+        bottom: 0
+      })
+      .padding({
+        left: this.linePaddingLeftRight,
+        right: this.linePaddingLeftRight,
+        top: 0,
+        bottom: 0
+      })
+      .position({ x: 0, y: this.calculateLineYPosition(index) })
       .opacity(this.getLineOpacity(index))
       .scale({
         x: this.getLineScale(index),
@@ -1346,7 +1301,7 @@ export struct LyricsView {
       .justifyContent(this.getRowJustifyContent())
       .alignItems(VerticalAlign.Center)
       .position({
-        x: this.linePaddingLeftRight,
+        x: 0,
         y: this.getTransitioningYPosition() // Use animation interpolation position
       })
       .opacity(this.getLineOpacity(index))
@@ -1374,7 +1329,7 @@ export struct LyricsView {
             .textOverflow({ overflow: TextOverflow.None }) // No ellipsis
             .width('auto') // Let text natural width
         }
-        .width('100%')
+        .width(this.getStackWidthForScrolling(line, this.currentLineTextSize))
         .alignContent(this.getAlignment())
       }
       .scrollable(ScrollDirection.Horizontal) // Horizontal scroll
@@ -1382,7 +1337,7 @@ export struct LyricsView {
       .width(this.actualViewWidth)
       .height(this.getLineHeight())
       .position({
-        x: this.getScrollPositionX(),
+        x: 0,
         y: this.getTransitioningYPosition() // Use animation interpolation position
       })
       .opacity(this.getLineOpacity(index))
@@ -1428,8 +1383,14 @@ export struct LyricsView {
         .width(this.actualViewWidth)
         .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
         .justifyContent(this.getRowJustifyContent())
+        .padding({
+          left: this.linePaddingLeftRight,
+          right: this.linePaddingLeftRight,
+          top: 0,
+          bottom: 0
+        })
         .position({
-          x: this.linePaddingLeftRight,
+          x: 0,
           y: this.getNewCurrentYPosition()
         })
         .opacity(this.getLineOpacity(index))
@@ -1502,8 +1463,14 @@ export struct LyricsView {
         .width(this.actualViewWidth)
         .height(this.getDynamicLineHeight(line, this.currentLineTextSize))
         .alignContent(this.getAlignment())
+        .padding({
+          left: this.linePaddingLeftRight,
+          right: this.linePaddingLeftRight,
+          top: 0,
+          bottom: 0
+        })
         .position({
-          x: this.linePaddingLeftRight,
+          x: 0,
           y: this.getNewCurrentYPosition()
         })
         .opacity(this.getLineOpacity(index))
@@ -1532,7 +1499,7 @@ export struct LyricsView {
               .textAlign(this.getTextAlign())
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.None })
-              .width('auto')
+              .width('100%')
               .animation({
                 duration: 300,
                 curve: Curve.EaseInOut,
@@ -1540,15 +1507,21 @@ export struct LyricsView {
                 playMode: PlayMode.Normal
               })
           }
-          .width('100%')
+          .width(this.getStackWidthForScrolling(line, this.currentLineTextSize))
           .alignContent(this.getAlignment())
         }
         .scrollable(ScrollDirection.Horizontal)
         .scrollBar(BarState.Off)
         .width(this.actualViewWidth)
         .height(this.getLineHeight())
+        .padding({
+          left: this.linePaddingLeftRight,
+          right: this.linePaddingLeftRight,
+          top: 0,
+          bottom: 0
+        })
         .position({
-          x: this.getScrollPositionX(),
+          x: 0,
           y: this.getNewCurrentYPosition()
         })
         .opacity(this.getLineOpacity(index))
@@ -1605,15 +1578,21 @@ export struct LyricsView {
                 playMode: PlayMode.Normal
               })
           }
-          .width('100%')
+          .width(this.getStackWidthForScrolling(line, this.currentLineTextSize))
           .alignContent(this.getAlignment())
         }
         .scrollable(ScrollDirection.Horizontal)
         .scrollBar(BarState.Off)
         .width(this.actualViewWidth)
         .height(this.getLineHeight())
+        .padding({
+          left: this.linePaddingLeftRight,
+          right: this.linePaddingLeftRight,
+          top: 0,
+          bottom: 0
+        })
         .position({
-          x: this.getScrollPositionX(),
+          x: 0,
           y: this.getNewCurrentYPosition()
         })
         .opacity(this.getLineOpacity(index))
@@ -1665,7 +1644,7 @@ export struct LyricsView {
     .height(this.getDynamicLineHeight(line, this.textSize))
     .justifyContent(this.getRowJustifyContent())
     .alignItems(VerticalAlign.Center)
-    .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
+    .position({ x: 0, y: this.calculateLineYPosition(index) })
     .opacity(this.getLineOpacity(index))
     .scale({
       x: this.getLineScale(index),
@@ -1693,13 +1672,13 @@ export struct LyricsView {
         .textAlign(this.getTextAlign())
         .maxLines(1) // Single line display
         .textOverflow({ overflow: TextOverflow.None }) // No ellipsis
-        .width('auto') // Let text natural width
+        .width('100%') // Let text natural width
     }
     .width(this.actualViewWidth)
     .height(this.getLineHeight())
     .alignContent(this.getAlignment())
     .clip(true) // Clip exceeding part, no ellipsis
-    .position({ x: this.linePaddingLeftRight, y: this.calculateLineYPosition(index) })
+    .position({ x: 0, y: this.calculateLineYPosition(index) })
     .opacity(this.getLineOpacity(index))
     .scale({
       x: this.getLineScale(index),
@@ -1716,7 +1695,7 @@ export struct LyricsView {
 
   /**
    * Calculate current line's highlight progress (between 0-1)
-   * Precise progress calculation based on time, avoiding Chinese character calculation being too fast
+   * Precise progress calculation based on actual text width, not character count
    */
   private calculateLineProgress(line: LyricsLineModel): number {
     if (!line.tones || line.tones.length === 0) {
@@ -1732,27 +1711,38 @@ export struct LyricsView {
       return 1;
     }
 
-    // Time-based progress calculation, more accurately reflects playback progress
-    const lineDuration = lineEndTime - lineStartTime;
-    const playedTime = this.mCurrentTime - lineStartTime;
+    // Calculate progress based on actual text width, not character count
+    // This ensures accurate highlighting even with spaces and different character widths
+    const lineText = this.getLineText(line);
+    const fontSize = this.currentLineTextSize;
+    const totalWidth = this.measureTextWidth(lineText, fontSize);
 
-    if (lineDuration <= 0) {
-      return 1;
+    if (totalWidth === 0) {
+      return 0;
     }
 
-    return Math.min(1, playedTime / lineDuration);
-  }
+    let highlightedWidth = 0;
 
-  /**
-   * Get current line character color (implement highlight logic)
-   */
-  private getCurrentLineCharColor(tone: Tone): string {
-    // Current line highlight logic: all sung parts are highlighted
-    if (this.mCurrentTime >= tone.begin) {
-      return this.currentLineHighlightedTextColor; // Highlight color
-    } else {
-      return this.currentLineTextColor; // Current line normal color
+    for (let i = 0; i < line.tones.length; i++) {
+      const tone = line.tones[i];
+
+      if (this.mCurrentTime >= tone.end) {
+        // This tone is fully sung, add its full width
+        highlightedWidth += this.measureTextWidth(tone.word, fontSize);
+      } else if (this.mCurrentTime >= tone.begin) {
+        // Currently singing this tone, calculate partial width
+        const toneProgress = (this.mCurrentTime - tone.begin) / (tone.end - tone.begin);
+        const toneFullWidth = this.measureTextWidth(tone.word, fontSize);
+        highlightedWidth += toneFullWidth * toneProgress;
+        break;
+      } else {
+        // Haven't reached this tone yet
+        // If we're in a gap between tones, keep progress at previous tone's end
+        break;
+      }
     }
+
+    return Math.min(1, highlightedWidth / totalWidth);
   }
 
   /**
@@ -2170,7 +2160,7 @@ export struct LyricsView {
         // After height changes, positions will automatically recalculate, no need to manually scroll
       }
       if (newValue.width && typeof newValue.width === 'number') {
-        this.actualViewWidth = newValue.width - this.linePaddingLeftRight * 2;
+        this.actualViewWidth = newValue.width;
         LogUtils.d(`LyricsView: Component width measured: ${this.actualViewWidth}`);
       }
     })
