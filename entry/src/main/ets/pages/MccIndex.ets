@@ -1,5 +1,8 @@
 import { MccKaraokeViewModel } from '../viewmodels/MccKaraokeViewModel';
-
+import { SettingsDialog } from '../components/SettingsDialog';
+import { SettingsConfig } from '../models/SettingsConfig';
+import { LyricsViewConfig } from '../models/LyricsViewConfig';
+import { ScoringViewConfig } from '../models/ScoringViewConfig';
 import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 
 /**
@@ -17,10 +20,55 @@ import { KaraokeView, LyricsView, ScoringView } from '@shengwang/lyrics-view';
 @ComponentV2
 struct MccIndex {
   @Local private viewModel: MccKaraokeViewModel = new MccKaraokeViewModel();
+  @Local private lyricsConfig: LyricsViewConfig = new LyricsViewConfig();
+  @Local private scoringConfig: ScoringViewConfig = new ScoringViewConfig();
+  // 设置对话框控制器
+  private settingsDialogController: CustomDialogController = new CustomDialogController({
+    builder: SettingsDialog({
+      onConfirm: () => {
+        // 设置确定后，重新加载并应用配置
+        this.viewModel.reloadAndApplySettings();
+        // 重新加载歌词视图配置
+        this.loadLyricsViewConfig();
+        // 重新加载打分视图配置
+        this.loadScoringViewConfig();
+      },
+      onClearCache: () => {
+        // 清空缓存
+        this.viewModel.clearCache();
+      }
+    }),
+    alignment: DialogAlignment.Center,
+    autoCancel: true,
+    customStyle: true
+  });
 
-  aboutToAppear() {
+  async aboutToAppear() {
+    // 初始化设置配置
+    await SettingsConfig.initialize();
+
+    // 加载歌词视图配置
+    this.loadLyricsViewConfig();
+
+    // 加载打分视图配置
+    this.loadScoringViewConfig();
+
     // 初始化 ViewModel
     this.viewModel.initialize();
+  }
+
+  /**
+   * 加载歌词视图配置
+   */
+  private loadLyricsViewConfig(): void {
+    this.lyricsConfig = SettingsConfig.getLyricsViewConfig();
+  }
+
+  /**
+   * 加载打分视图配置
+   */
+  private loadScoringViewConfig(): void {
+    this.scoringConfig = SettingsConfig.getScoringViewConfig();
   }
 
   aboutToDisappear() {
@@ -57,13 +105,28 @@ struct MccIndex {
     .width('100%')
     .height(50)
     .padding({ left: 16, right: 16 })
-    .justifyContent(FlexAlign.Start)
+    .justifyContent(FlexAlign.SpaceBetween)
   }
 
   @Builder
   ScoringViewBuilder() {
     ScoringView({
-      enableParticleEffect: true
+      viewBackgroundColor: this.scoringConfig.viewBackgroundColor,
+      leadingLinesColor: this.scoringConfig.leadingLinesColor,
+      leadingLinesHeight: this.scoringConfig.leadingLinesHeight,
+      pitchIndicatorColor: this.scoringConfig.pitchIndicatorColor,
+      pitchIndicatorWidth: this.scoringConfig.pitchIndicatorWidth,
+      localPitchIndicatorColor: this.scoringConfig.localPitchIndicatorColor,
+      localPitchIndicatorRadius: this.scoringConfig.localPitchIndicatorRadius,
+      pitchStickHeight: this.scoringConfig.pitchStickHeight,
+      pitchStickRadius: this.scoringConfig.pitchStickRadius,
+      refPitchStickDefaultColor: this.scoringConfig.refPitchStickDefaultColor,
+      highlightedPitchStickColor: this.scoringConfig.highlightedPitchStickColor,
+      initialScore: this.scoringConfig.initialScore,
+      movingPixelsPerMs: this.scoringConfig.movingPixelsPerMs,
+      hitScoreThreshold: this.scoringConfig.hitScoreThreshold,
+      startPointHorizontalBias: this.scoringConfig.startPointHorizontalBias,
+      enableParticleEffect: this.scoringConfig.enableParticleEffect
     })
       .width('100%')
       .height('100%')
@@ -72,24 +135,27 @@ struct MccIndex {
   @Builder
   LyricsViewBuilder() {
     LyricsView({
-      textSize: 16,
-      currentLineTextSize: 20,
-      currentLineTextColor: '#FFFF00',
-      currentLineHighlightedTextColor: '#FFF44336',
-      previousLineTextColor: '#FFFFFF',
-      upcomingLineTextColor: '#FFFFFF',
-      lineSpacing: 15,
-      paddingTop: 15,
-      labelWhenNoLyrics: '暂无歌词',
-      enableLineWrap: false,
-      enableDragging: true,
-      enablePreviousLines: true,
-      enableUpcomingLines: true,
-      enablePreludeEndPositionIndicator: true,
-      preludeEndPositionIndicatorPaddingTop: 5,
-      preludeEndPositionIndicatorRadius: 4,
-      preludeEndPositionIndicatorColor: '#FF6B35',
-      textGravity: 0
+      viewBackgroundColor: this.lyricsConfig.viewBackgroundColor,
+      textSize: this.lyricsConfig.textSize,
+      currentLineTextSize: this.lyricsConfig.currentLineTextSize,
+      currentLineTextColor: this.lyricsConfig.currentLineTextColor,
+      currentLineHighlightedTextColor: this.lyricsConfig.currentLineHighlightedTextColor,
+      previousLineTextColor: this.lyricsConfig.previousLineTextColor,
+      upcomingLineTextColor: this.lyricsConfig.upcomingLineTextColor,
+      lineSpacing: this.lyricsConfig.lineSpacing,
+      paddingTop: this.lyricsConfig.paddingTop,
+      labelWhenNoLyrics: this.lyricsConfig.labelWhenNoLyrics,
+      enableLineWrap: this.lyricsConfig.enableLineWrap,
+      // Only enable dragging when both config allows it AND music is playing
+      enableDragging: this.lyricsConfig.enableDragging && this.viewModel.playbackState.isPlaying,
+      enableOpacityEffect: this.lyricsConfig.enableOpacityEffect,
+      enablePreviousLines: this.lyricsConfig.enablePreviousLines,
+      enableUpcomingLines: this.lyricsConfig.enableUpcomingLines,
+      enablePreludeEndPositionIndicator: this.lyricsConfig.enablePreludeEndPositionIndicator,
+      preludeEndPositionIndicatorPaddingTop: this.lyricsConfig.preludeEndPositionIndicatorPaddingTop,
+      preludeEndPositionIndicatorRadius: this.lyricsConfig.preludeEndPositionIndicatorRadius,
+      preludeEndPositionIndicatorColor: this.lyricsConfig.preludeEndPositionIndicatorColor,
+      textGravity: this.lyricsConfig.textGravity
     })
       .width('100%')
       .height('100%')
@@ -331,12 +397,12 @@ struct MccIndex {
           this.viewModel.toggleOriginalTrack();
         })
 
-      Button('切换Vendor')
+      Button('设置')
         .fontSize(14)
         .backgroundColor('#795548')
         .enabled(!this.viewModel.uiState.isLoading)
         .onClick(() => {
-          this.viewModel.switchServiceType();
+          this.settingsDialogController.open();
         })
 
     }

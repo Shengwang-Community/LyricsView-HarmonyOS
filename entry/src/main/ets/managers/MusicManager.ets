@@ -39,7 +39,7 @@ export class MusicManager implements IMccCallback {
   private positionUpdateStartTime: number = 0; // System time when timer started
   private positionUpdateStartPosition: number = 0; // Music position when timer started
   // Music configuration
-  private lyricType: Constants.LyricSourceType = 0; // LYRIC_SOURCE_XML = 0
+  private lyricType: Constants.LyricSourceType = Constants.LyricSourceType.XML;
   private musicPlayMode: Constants.MusicPlayMode = Constants.MusicPlayMode.ORIGINAL;
   private isOriginal: boolean = true;
   // Music resources
@@ -91,22 +91,24 @@ export class MusicManager implements IMccCallback {
    * Update music service type
    * @param serviceType - Service type
    */
-  updateMusicVendor(vendorId: MusicContentCenterVendorId): void {
+  updateMusicVendor(vendorId: MusicContentCenterVendorId, enablePlay: boolean = true): void {
     ExampleLogUtils.logDebug(MusicManager.TAG, `updateMusicVendor:${vendorId}`);
 
     this.currentSongIndex = 0;
 
     switch (vendorId) {
       case MusicContentCenterVendorId.DEFAULT:
-        this.lyricType = Constants.LyricSourceType.XML;
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor1MusicList();
         break;
       case MusicContentCenterVendorId.VENDOR_2:
-        this.lyricType = Constants.LyricSourceType.KRC;
         this.musicPlayMode = Constants.MusicPlayMode.ORIGINAL;
         this.musicResources = MusicResourcePool.getVendor2MusicList();
         break;
+    }
+    if (!enablePlay) {
+      this.status = PlaybackStatus.IDLE;
+      return;
     }
     this.playMusic();
   }
@@ -150,7 +152,7 @@ export class MusicManager implements IMccCallback {
     // Set lyrics type based on vendor
     if (currentMusic.vendorId === MusicContentCenterVendorId.VENDOR_2) {
       //TODO LyricType 0: xml 1: lrc 2: lrc with pitches 3: krc
-      this.lyricType = Constants.LyricSourceType.KRC; // LYRIC_SOURCE_KRC = 1
+      this.lyricType = Constants.LyricSourceType.KRC;
     }
 
     this.status = PlaybackStatus.LOADING;
@@ -158,7 +160,8 @@ export class MusicManager implements IMccCallback {
     this.rtcMccManager?.preloadMusic(
       currentMusic.songCode,
       currentMusic.vendorId,
-      currentMusic.songOptionJson
+      currentMusic.songOptionJson,
+      this.lyricType.valueOf()
     );
   }
 
@@ -543,7 +546,17 @@ export class MusicManager implements IMccCallback {
    * Set lyric type
    */
   setLyricType(lyricType: Constants.LyricSourceType): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager setLyricType:${lyricType}`);
     this.lyricType = lyricType;
+  }
+
+  /**
+   * Set score level
+   * @param level - Score level (1-5)
+   */
+  setScoreLevel(level: number): void {
+    ExampleLogUtils.logDebug(MusicManager.TAG, `MusicManager setScoreLevel:${level}`);
+    this.rtcMccManager?.setScoreLevel(level);
   }
 
   /**

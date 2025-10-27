@@ -66,6 +66,7 @@ show_help() {
     echo ""
     echo "命令:"
     echo "  (无参数)               编译 Release 版本 (HAR + HAP)"
+    echo "  -release               编译并发布到 OHPM 中心仓"
     echo "  clean                  清理所有构建文件"
     echo "  help                   显示此帮助信息"
     echo ""
@@ -75,9 +76,13 @@ show_help() {
     echo ""
     echo "发布目录结构:"
     echo "  releases/v{版本号}/"
-    echo "    ├── sdk/                  # SDK 包"
-    echo "    │   └── Agora-LyricsView-{版本号}.har"
-    echo "    └── example/              # 示例应用"
+    echo "    ├── sdk/                              # SDK 包（三方库发布）"
+    echo "    │   ├── Agora-LyricsView-{版本号}.har  # HAR 包"
+    echo "    │   ├── oh-package.json5              # 包配置（必需）"
+    echo "    │   ├── README.md                     # 使用文档（必需）"
+    echo "    │   ├── CHANGELOG.md                  # 更新日志（必需）"
+    echo "    │   └── LICENSE                       # 开源协议（必需）"
+    echo "    └── example/                          # 示例应用"
     echo "        └── LyricsView-Example-v{版本号}-{时间戳}.hap"
     echo ""
     echo "HAP 文件命名格式:"
@@ -86,6 +91,7 @@ show_help() {
     echo ""
     echo "示例:"
     echo "  ./build.sh              # 编译 HAR 和 HAP"
+    echo "  ./build.sh -release     # 编译并发布到 OHPM"
     echo "  ./build.sh clean        # 清理构建文件"
     echo ""
     echo "🚀 推荐使用: ./build.sh  # 一条命令编译 HAR + HAP"
@@ -174,11 +180,19 @@ build_har() {
     print_step "开始编译 lyrics_view HAR 包..."
     print_info "构建类型: $BUILD_TYPE"
     
+    # 获取版本信息并清理旧的 release 目录
+    local VERSION=$(get_version)
+    local RELEASE_DIR="$PROJECT_ROOT/releases/v$VERSION"
+    
+    if [ -d "$RELEASE_DIR" ]; then
+        print_info "清理旧的发布目录: releases/v$VERSION"
+        rm -rf "$RELEASE_DIR"
+        print_success "已清理旧版本目录"
+    fi
+    
     # 进入 lyrics_view 目录
     cd lyrics_view
     
-    # 获取版本信息
-    local VERSION=$(get_version)
     print_info "当前版本: $VERSION"
     
     # 清理之前的构建
@@ -229,6 +243,546 @@ build_har() {
     fi
 }
 
+# 生成三方库发布所需文件
+generate_release_files() {
+    local VERSION=$1
+    local OUTPUT_DIR=$2
+    
+    print_step "生成三方库发布文件..."
+    
+    # 1. 复制 oh-package.json5
+    if [ -f "lyrics_view/oh-package.json5" ]; then
+        cp "lyrics_view/oh-package.json5" "$OUTPUT_DIR/oh-package.json5"
+        print_success "✓ oh-package.json5"
+    else
+        print_error "oh-package.json5 不存在！"
+        exit 1
+    fi
+    
+    # 2. 生成 LICENSE 文件
+    cat > "$OUTPUT_DIR/LICENSE" << 'EOF'
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   Copyright 2024 Shengwang Community
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+EOF
+    print_success "✓ LICENSE"
+    
+    # 3. 生成 README.md
+    cat > "$OUTPUT_DIR/README.md" << EOF
+# Agora LyricsView HarmonyOS
+
+[![Version](https://img.shields.io/badge/version-${VERSION}-blue.svg)](https://github.com/Shengwang-Community/LyricsView-HarmonyOS)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![HarmonyOS](https://img.shields.io/badge/HarmonyOS-API%209+-orange.svg)](https://developer.harmonyos.com/)
+
+HarmonyOS 平台的歌词显示和卡拉OK组件，支持逐字高亮、音高评分、粒子特效等功能。
+
+## ✨ 功能特性
+
+- 🎵 **歌词显示**：支持 LRC 和 XML 格式歌词，自动滚动和居中显示
+- 🎤 **卡拉OK模式**：逐字高亮显示，精确同步音乐播放进度
+- 🎯 **音高评分**：实时评分系统，支持自定义评分算法
+- 🎨 **粒子特效**：精彩演唱时的视觉反馈效果
+- 📱 **触摸交互**：支持拖拽调整播放进度
+- 🔄 **平滑动画**：流畅的过渡动画效果
+- ⚙️ **高度可定制**：丰富的样式配置选项
+
+## 📦 安装
+
+### 方式一：使用 HAR 包（推荐）
+
+1. 将 HAR 包复制到项目的 \`libs\` 目录
+
+2. 在 \`oh-package.json5\` 中添加依赖：
+
+\`\`\`json5
+{
+  "dependencies": {
+    "@shengwang/lyrics-view": "file:./libs/Agora-LyricsView-${VERSION}.har"
+  }
+}
+\`\`\`
+
+3. 执行 \`ohpm install\`
+
+### 方式二：源码集成
+
+从 GitHub 克隆源码到项目中，然后在 \`oh-package.json5\` 中配置本地路径。
+
+## 🚀 快速开始
+
+### 1. 导入组件
+
+\`\`\`typescript
+import { 
+  KaraokeView, 
+  LyricsView, 
+  ScoringView 
+} from '@shengwang/lyrics-view';
+\`\`\`
+
+### 2. 创建 KaraokeView 实例
+
+\`\`\`typescript
+private karaokeView: KaraokeView = new KaraokeView();
+\`\`\`
+
+### 3. 解析歌词
+
+\`\`\`typescript
+// 从文件路径解析
+const lyricModel = this.karaokeView.parseLyrics(
+  '/path/to/lyrics.xml',
+  '/path/to/pitch.txt',
+  true,  // 包含版权信息
+  0      // 歌词偏移量（毫秒）
+);
+
+// 设置歌词数据
+if (lyricModel) {
+  this.karaokeView.setLyricData(lyricModel, false);
+}
+\`\`\`
+
+### 4. 在界面中使用组件
+
+\`\`\`typescript
+build() {
+  Column() {
+    // 评分视图
+    ScoringView({
+      enableParticleEffect: true
+    })
+      .width('100%')
+      .height(180)
+    
+    // 歌词视图
+    LyricsView({
+      textSize: 16,
+      currentLineTextSize: 20,
+      currentLineTextColor: '#FFFF00',
+      currentLineHighlightedTextColor: '#FFF44336',
+      enableDragging: true
+    })
+      .width('100%')
+      .height(260)
+  }
+}
+\`\`\`
+
+### 5. 更新播放进度
+
+\`\`\`typescript
+// 在播放器回调中更新进度（建议 20ms 间隔）
+onPositionChanged(position: number) {
+  this.karaokeView.setProgress(position);
+}
+\`\`\`
+
+### 6. 设置音高数据（可选）
+
+\`\`\`typescript
+// 从麦克风输入获取音高数据
+onPitch(speakerPitch: number, score: number) {
+  this.karaokeView.setPitch(speakerPitch, score);
+}
+\`\`\`
+
+### 7. 清理资源
+
+\`\`\`typescript
+aboutToDisappear() {
+  this.karaokeView.destroy();
+}
+\`\`\`
+
+## 📖 API 文档
+
+### KaraokeView
+
+主控制器类，管理歌词显示和评分系统。
+
+#### 静态方法
+
+\`\`\`typescript
+// 获取 SDK 版本号
+static getSdkVersion(): string
+\`\`\`
+
+#### 实例方法
+
+\`\`\`typescript
+// 解析歌词文件
+parseLyrics(
+  lyricSource: string | Uint8Array,
+  pitchSource?: string | Uint8Array,
+  includeCopyrightSentence?: boolean,
+  lyricOffset?: number
+): LyricModel | null
+
+// 设置歌词数据
+setLyricData(model: LyricModel, usingInternalScoring?: boolean): void
+
+// 设置播放进度（毫秒）
+setProgress(progress: number): void
+
+// 设置音高数据
+setPitch(speakerPitch: number, pitchScore: number): void
+
+// 重置组件
+reset(): void
+
+// 销毁组件
+destroy(): void
+\`\`\`
+
+### LyricsView 配置参数
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| \`textSize\` | number | 14 | 普通文本大小 |
+| \`currentLineTextSize\` | number | 18 | 当前行文本大小 |
+| \`currentLineTextColor\` | string | '#FFFFFF' | 当前行文本颜色 |
+| \`currentLineHighlightedTextColor\` | string | '#FF6B35' | 当前行高亮颜色 |
+| \`previousLineTextColor\` | string | '#999999' | 已唱行文本颜色 |
+| \`upcomingLineTextColor\` | string | '#CCCCCC' | 未唱行文本颜色 |
+| \`lineSpacing\` | number | 10 | 行间距 |
+| \`enableDragging\` | boolean | true | 是否启用拖拽 |
+| \`enableLineWrap\` | boolean | false | 是否启用自动换行 |
+
+### ScoringView 配置参数
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| \`enableParticleEffect\` | boolean | true | 是否启用粒子特效 |
+
+## 🎯 使用场景
+
+- 🎤 在线K歌应用
+- 🎵 音乐播放器
+- 📺 KTV系统
+- 🎓 音乐教学应用
+- 🎮 音乐游戏
+
+## 📋 系统要求
+
+- HarmonyOS API 9 或更高版本
+- DevEco Studio 4.0 或更高版本
+- ArkTS/TS 支持
+
+## 🔗 相关链接
+
+- [GitHub 仓库](https://github.com/Shengwang-Community/LyricsView-HarmonyOS)
+- [问题反馈](https://github.com/Shengwang-Community/LyricsView-HarmonyOS/issues)
+- [更新日志](CHANGELOG.md)
+
+## 📄 开源协议
+
+本项目采用 [Apache License 2.0](LICENSE) 开源协议。
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📧 联系我们
+
+如有问题或建议，请通过以下方式联系：
+
+- GitHub Issues: https://github.com/Shengwang-Community/LyricsView-HarmonyOS/issues
+- 社区论坛: https://www.shengwang.cn/
+
+---
+
+Made with ❤️ by Shengwang Community
+EOF
+    print_success "✓ README.md"
+    
+    # 4. 生成 CHANGELOG.md
+    local CURRENT_DATE=$(date +"%Y-%m-%d")
+    cat > "$OUTPUT_DIR/CHANGELOG.md" << EOF
+# 更新日志
+
+本文档记录 Agora LyricsView HarmonyOS 的所有重要变更。
+
+## [${VERSION}] - ${CURRENT_DATE}
+
+### 🎉 新增功能
+
+- ✨ 初始版本发布
+- 🎵 支持 LRC 和 XML 格式歌词解析
+- 🎤 支持卡拉OK逐字高亮显示
+- 🎯 支持音高实时评分
+- 🎨 支持粒子特效
+- 📱 支持触摸拖拽调整进度
+- 🔄 支持平滑滚动动画
+
+### 🎨 组件列表
+
+- **KaraokeView**: 主控制器，管理歌词和评分
+- **LyricsView**: 歌词显示组件
+- **ScoringView**: 评分显示组件
+
+### 🛠️ 技术特性
+
+- 基于 ArkTS 开发
+- 支持 HarmonyOS API 9+
+- 事件驱动架构
+- 高性能渲染
+- 内存管理优化
+
+### 📦 发布说明
+
+#### HAR 包信息
+
+- **包名**: @shengwang/lyrics-view
+- **版本**: ${VERSION}
+- **大小**: 约 200 KB
+- **依赖**: 无外部依赖
+
+#### 安装方式
+
+\`\`\`json5
+{
+  "dependencies": {
+    "@shengwang/lyrics-view": "file:./libs/Agora-LyricsView-${VERSION}.har"
+  }
+}
+\`\`\`
+
+### 🐛 已知问题
+
+- 无
+
+### 📝 注意事项
+
+- 建议每 20ms 调用一次 \`setProgress()\` 以确保歌词同步流畅
+- 使用完毕后请调用 \`destroy()\` 释放资源
+- 音高评分功能需要配合音频采集使用
+
+### 🔜 计划功能
+
+- [ ] 支持更多歌词格式
+- [ ] 增加更多粒子特效样式
+- [ ] 优化内存占用
+- [ ] 添加更多配置选项
+- [ ] 性能优化
+
+---
+
+## 版本规范
+
+本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 规范：
+
+- **主版本号（MAJOR）**: 不兼容的 API 变更
+- **次版本号（MINOR）**: 向下兼容的功能新增
+- **修订号（PATCH）**: 向下兼容的问题修正
+
+## 获取更新
+
+- GitHub Releases: https://github.com/Shengwang-Community/LyricsView-HarmonyOS/releases
+- 更新通知: 关注项目获取最新动态
+
+---
+
+感谢使用 Agora LyricsView HarmonyOS！
+EOF
+    print_success "✓ CHANGELOG.md"
+    
+    echo ""
+    print_success "所有发布文件生成完成！"
+    print_info "输出目录: $OUTPUT_DIR"
+    echo ""
+    print_info "📋 文件清单:"
+    ls -lh "$OUTPUT_DIR" | grep -E "(oh-package|README|CHANGELOG|LICENSE)"
+}
+
 # 配置 entry 使用 HAR 包（SDK 模式）
 configure_entry_har() {
     print_step "配置 entry 使用 HAR 包..."
@@ -259,9 +813,6 @@ configure_entry_har() {
         # 更新 entry/oh-package.json5
         local ENTRY_PACKAGE="$PROJECT_ROOT/entry/oh-package.json5"
         if [ -f "$ENTRY_PACKAGE" ]; then
-            # 备份原文件
-            cp "$ENTRY_PACKAGE" "${ENTRY_PACKAGE}.bak"
-            
             # 使用 sed 替换导入路径
             sed -i '' "s|\"@shengwang/lyrics-view\": \"file:../lyrics_view\"|\"@shengwang/lyrics-view\": \"file:./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
             sed -i '' "s|\"path\": \"../lyrics_view\"|\"path\": \"./libs/$HAR_FILENAME\"|g" "$ENTRY_PACKAGE"
@@ -340,20 +891,40 @@ build_hap() {
     # 使用 DevEco Studio 的 hvigor 工具
     local HVIGOR_CMD="/Applications/DevEco-Studio.app/Contents/tools/node/bin/node /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js"
     
-    print_info "编译 Release 版本 HAP 包..."
-    $HVIGOR_CMD --mode module -p module=entry@default -p product=default -p buildMode=release assembleHap --analyze=normal --parallel --incremental --daemon
+    # 使用 release product 配置（使用发布证书签名）
+    print_info "编译 Release 版本 HAP 包（使用发布证书）..."
+    $HVIGOR_CMD --mode module -p module=entry@default -p product=release -p buildMode=release assembleHap --analyze=normal --parallel --incremental --daemon
     
-    # 检查编译结果
-    local SIGNED_HAP_PATH="entry/build/default/outputs/default/entry-default-signed.hap"
-    local UNSIGNED_HAP_PATH="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    # 检查编译结果（支持 default 和 release product）
+    local SIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-unsigned.hap"
+    local SIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    
+    local SIGNED_HAP_PATH=""
+    local UNSIGNED_HAP_PATH=""
+    
+    # 优先检查 release product 的输出
+    if [ -f "$SIGNED_HAP_PATH_RELEASE" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$SIGNED_HAP_PATH_DEFAULT" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_DEFAULT"
+    fi
+    
+    if [ -f "$UNSIGNED_HAP_PATH_RELEASE" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$UNSIGNED_HAP_PATH_DEFAULT" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_DEFAULT"
+    fi
     
     if [ -f "$SIGNED_HAP_PATH" ] || [ -f "$UNSIGNED_HAP_PATH" ]; then
         print_success "HAP 包编译成功!"
         
         if [ -f "$SIGNED_HAP_PATH" ]; then
-            print_info "类型: 已签名版本 (signed)"
+            print_info "类型: 已签名版本 (signed) - 使用发布证书"
+            print_success "✅ 此 HAP 可在任意 HarmonyOS 设备上安装！"
             ls -lh "$SIGNED_HAP_PATH"
-        else
+        elif [ -f "$UNSIGNED_HAP_PATH" ]; then
             print_warning "类型: 未签名版本 (unsigned) - 建议配置签名"
             ls -lh "$UNSIGNED_HAP_PATH"
         fi
@@ -368,12 +939,30 @@ build_hap() {
 rename_hap_file() {
     local VERSION=$1
     local RELEASE_DIR=$2
-    local OUTPUT_DIR="entry/build/default/outputs/default"
     local TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
     local NEW_FILENAME="LyricsView-Example-v${VERSION}-${TIMESTAMP}.hap"
     
-    local SIGNED_HAP_PATH="$OUTPUT_DIR/entry-default-signed.hap"
-    local UNSIGNED_HAP_PATH="$OUTPUT_DIR/entry-default-unsigned.hap"
+    # 检查 release 和 default 两个目录
+    local SIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_RELEASE="entry/build/release/outputs/default/entry-default-unsigned.hap"
+    local SIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-signed.hap"
+    local UNSIGNED_HAP_PATH_DEFAULT="entry/build/default/outputs/default/entry-default-unsigned.hap"
+    
+    local SIGNED_HAP_PATH=""
+    local UNSIGNED_HAP_PATH=""
+    
+    # 优先使用 release product 的输出
+    if [ -f "$SIGNED_HAP_PATH_RELEASE" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$SIGNED_HAP_PATH_DEFAULT" ]; then
+        SIGNED_HAP_PATH="$SIGNED_HAP_PATH_DEFAULT"
+    fi
+    
+    if [ -f "$UNSIGNED_HAP_PATH_RELEASE" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_RELEASE"
+    elif [ -f "$UNSIGNED_HAP_PATH_DEFAULT" ]; then
+        UNSIGNED_HAP_PATH="$UNSIGNED_HAP_PATH_DEFAULT"
+    fi
     
     # 创建 example 目录
     local EXAMPLE_DIR="$RELEASE_DIR/example"
@@ -385,7 +974,8 @@ rename_hap_file() {
         cp "$SIGNED_HAP_PATH" "$NEW_HAP_PATH"
         print_success "HAP 文件已重命名并复制到 release 目录"
         print_info "文件名: $NEW_FILENAME"
-        print_info "类型: 已签名版本 (signed)"
+        print_info "类型: 已签名版本 (signed) - 使用发布证书"
+        print_success "✅ 此 HAP 可在任意 HarmonyOS 设备上安装！"
         print_info "位置: $NEW_HAP_PATH"
         
         # 显示文件信息
@@ -455,7 +1045,16 @@ build_release() {
     # 6. 准备发布文件
     print_step "📦 准备发布文件..."
     local RELEASE_DIR="releases/v$VERSION"
+    
+    # 删除旧的 release 目录（如果存在）
+    if [ -d "$RELEASE_DIR" ]; then
+        print_info "删除旧版本目录: $RELEASE_DIR"
+        rm -rf "$RELEASE_DIR"
+    fi
+    
+    # 创建新的 release 目录
     mkdir -p "$RELEASE_DIR"
+    print_success "创建发布目录: $RELEASE_DIR"
     
     # 创建 sdk 和 example 子目录
     local SDK_DIR="$RELEASE_DIR/sdk"
@@ -482,6 +1081,10 @@ build_release() {
     cp "$HAR_PATH" "$RELEASE_HAR"
     print_info "已复制 HAR 包到: $SDK_DIR/$RELEASE_HAR_FILENAME"
     
+    # 生成三方库发布所需文件（oh-package.json5, README.md, CHANGELOG.md, LICENSE）
+    print_step "📝 生成三方库发布文件..."
+    generate_release_files "$VERSION" "$SDK_DIR"
+    
     # 复制并重命名 HAP 包到 example 目录
     rename_hap_file "$VERSION" "$RELEASE_DIR"
     
@@ -492,11 +1095,23 @@ build_release() {
     tree -L 2 "$RELEASE_DIR" 2>/dev/null || ls -lhR "$RELEASE_DIR/"
     
     echo ""
-    print_info "🚀 您现在可以："
-    print_info "   1. SDK (HAR): $RELEASE_DIR/sdk/${HAR_NAME}-${VERSION}.har"
-    print_info "   2. 示例 (HAP): $RELEASE_DIR/example/*.hap"
-    print_info "   3. 集成到其他项目中使用"
-    print_info "   4. 查看配置: entry/src/main/ets/utils/BuildConfig.ets"
+    print_success "📦 三方库发布文件已就绪！"
+    print_info ""
+    print_info "SDK 目录 ($RELEASE_DIR/sdk/):"
+    print_info "  ✓ ${HAR_NAME}-${VERSION}.har       - HAR 包文件"
+    print_info "  ✓ oh-package.json5                 - 包配置文件（必需）"
+    print_info "  ✓ README.md                        - 使用文档（必需）"
+    print_info "  ✓ CHANGELOG.md                     - 更新日志（必需）"
+    print_info "  ✓ LICENSE                          - 开源协议（必需）"
+    echo ""
+    print_info "示例应用 ($RELEASE_DIR/example/):"
+    print_info "  ✓ LyricsView-Example-v${VERSION}-*.hap"
+    echo ""
+    print_info "🚀 后续步骤："
+    print_info "   1. 将 sdk 目录中的所有文件一起发布到 HarmonyOS 中心仓"
+    print_info "   2. 在 oh-package.json5 中确认包名、版本号和描述"
+    print_info "   3. 根据需要更新 README.md 和 CHANGELOG.md"
+    print_info "   4. 示例 HAP 可用于演示和测试"
 }
 
 # 发布 HAR 包（保留原函数名以兼容）
@@ -692,11 +1307,99 @@ clean_build() {
     print_success "构建文件清理完成!"
 }
 
+# 发布到 OHPM 中心仓
+publish_to_ohpm() {
+    print_step "📦 发布 HAR 包到 OHPM 中心仓..."
+    
+    # 获取版本号
+    local VERSION=$(get_version)
+    local HAR_NAME=$(node "$CONFIG_MANAGER" get build.harName)
+    local HAR_FILENAME="${HAR_NAME}-${VERSION}.har"
+    local SDK_DIR="releases/v${VERSION}/sdk"
+    
+    # 检查 SDK 目录是否存在
+    if [ ! -d "$SDK_DIR" ]; then
+        print_error "SDK 目录不存在: $SDK_DIR"
+        print_info "请先运行 ./build.sh 编译项目"
+        exit 1
+    fi
+    
+    # 检查 HAR 文件是否存在
+    if [ ! -f "$SDK_DIR/$HAR_FILENAME" ]; then
+        print_error "HAR 文件不存在: $SDK_DIR/$HAR_FILENAME"
+        print_info "请先运行 ./build.sh 编译项目"
+        exit 1
+    fi
+    
+    # 进入 SDK 目录
+    cd "$SDK_DIR"
+    
+    # 1. 预验证
+    print_step "预验证 HAR 包..."
+    ohpm prepublish "$HAR_FILENAME"
+    
+    if [ $? -ne 0 ]; then
+        print_error "预验证失败！"
+        cd - > /dev/null
+        exit 1
+    fi
+    
+    echo ""
+    print_success "预验证通过！"
+    echo ""
+    
+    # 2. 发布
+    print_step "正在发布到 OHPM..."
+    print_info "HAR 文件: $HAR_FILENAME"
+    print_info "版本: $VERSION"
+    echo ""
+    print_warning "请手动输入私钥密码完成发布"
+    echo ""
+    
+    # 直接调用 ohpm publish，让用户手动输入密码
+    ohpm publish "$HAR_FILENAME"
+    
+    local PUBLISH_RESULT=$?
+    
+    # 返回项目根目录
+    cd - > /dev/null
+    
+    if [ $PUBLISH_RESULT -eq 0 ]; then
+        echo ""
+        print_success "🎉 HAR 包已成功发布到 OHPM 中心仓！"
+        print_info "包名: @shengwang/lyrics-view"
+        print_info "版本: $VERSION"
+        print_info "查看: https://ohpm.openharmony.cn/#/cn/detail/@shengwang%2Flyrics-view"
+    else
+        echo ""
+        print_error "发布失败！"
+        print_info "请检查网络连接和 OHPM 配置"
+        exit 1
+    fi
+}
+
+# 构建并发布
+build_and_publish() {
+    print_step "🚀 开始构建并发布流程..."
+    
+    # 1. 先执行完整构建
+    build_release
+    
+    echo ""
+    echo ""
+    
+    # 2. 发布到 OHPM
+    publish_to_ohpm
+}
+
 # 主函数
 main() {
     local COMMAND=${1:-build}
     
     case $COMMAND in
+        "-release")
+            build_and_publish
+            ;;
         "clean")
             clean_build
             ;;
