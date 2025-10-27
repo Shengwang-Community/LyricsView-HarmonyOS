@@ -58,14 +58,14 @@ export class MusicResourcePool {
       ""
     ));
 
-    list.push(new MusicResource(
-      2,
-      "7162848696618210",
-      "Love Story",
-      MusicContentCenterVendorId.DEFAULT,
-      4,
-      ""
-    ));
+    // list.push(new MusicResource(
+    //   2,
+    //   "7162848696618210",
+    //   "Love Story",
+    //   MusicContentCenterVendorId.DEFAULT,
+    //   4,
+    //   ""
+    // ));
 
     return list;
   }
